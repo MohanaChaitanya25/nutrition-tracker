@@ -815,6 +815,49 @@ st.markdown("""
 # --- APP HEADER ---
 st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
+# --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
+
+def hash_password(password):
+    """Converts a password into a secure hash"""
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def verify_login(email, password):
+    """Checks the Users sheet for a matching Email and Hashed Password"""
+    # Reuse your existing get_worksheet_df function
+    df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+    
+    if df_users.empty: return False
+    
+    # Filter for the email entered
+    user_row = df_users[df_users['Email'] == email.strip()]
+    if user_row.empty: return False
+    
+    # Check if the stored hash matches the input hash
+    stored_hash = str(user_row.iloc[0]['Password']).strip()
+    input_hash = hash_password(password)
+    
+    return stored_hash == input_hash
+
+def reset_password(email, new_password):
+    """Updates the password in the Google Sheet"""
+    sheet = get_google_sheet()
+    if not sheet: return False, "Database Error"
+    
+    try:
+        ws = sheet.worksheet(WORKSHEET_USERS)
+    except gspread.WorksheetNotFound:
+        return False, "Users sheet not found"
+        
+    # Find the row number for this email
+    cell = ws.find(email.strip())
+    if not cell: return False, "Email not found in database!"
+    
+    # Update Column 2 (Password) with new Hash
+    new_hash = hash_password(new_password)
+    ws.update_cell(cell.row, 2, new_hash)
+    st.cache_data.clear()
+    return True, "Password updated successfully!"
+
 # 1. Check URL for Persistence (Keeps user logged in on refresh)
 if "user" in st.query_params:
     CURRENT_USER = st.query_params["user"]
@@ -965,48 +1008,7 @@ if not st.session_state.onboarding_complete:
 # 🚀 SCREEN 2: MAIN DASHBOARD
 # ==========================================
 
-# --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
 
-def hash_password(password):
-    """Converts a password into a secure hash"""
-    return hashlib.sha256(str.encode(password)).hexdigest()
-
-def verify_login(email, password):
-    """Checks the Users sheet for a matching Email and Hashed Password"""
-    # Reuse your existing get_worksheet_df function
-    df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
-    
-    if df_users.empty: return False
-    
-    # Filter for the email entered
-    user_row = df_users[df_users['Email'] == email.strip()]
-    if user_row.empty: return False
-    
-    # Check if the stored hash matches the input hash
-    stored_hash = str(user_row.iloc[0]['Password']).strip()
-    input_hash = hash_password(password)
-    
-    return stored_hash == input_hash
-
-def reset_password(email, new_password):
-    """Updates the password in the Google Sheet"""
-    sheet = get_google_sheet()
-    if not sheet: return False, "Database Error"
-    
-    try:
-        ws = sheet.worksheet(WORKSHEET_USERS)
-    except gspread.WorksheetNotFound:
-        return False, "Users sheet not found"
-        
-    # Find the row number for this email
-    cell = ws.find(email.strip())
-    if not cell: return False, "Email not found in database!"
-    
-    # Update Column 2 (Password) with new Hash
-    new_hash = hash_password(new_password)
-    ws.update_cell(cell.row, 2, new_hash)
-    st.cache_data.clear()
-    return True, "Password updated successfully!"
 
 # --- DATA HELPERS ---
 def load_log():
