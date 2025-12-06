@@ -817,6 +817,33 @@ st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
 # --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
 
+def get_worksheet_df(worksheet_name, headers):
+    sheet = get_google_sheet()
+    if not sheet: return pd.DataFrame(columns=headers)
+    try:
+        ws = sheet.worksheet(worksheet_name)
+        
+        # AUTO-FIX: Check if sheet is empty and add headers
+        all_vals = ws.get_all_values()
+        if not all_vals:
+            ws.append_row(headers)
+            return pd.DataFrame(columns=headers)
+            
+        data = ws.get_all_records()
+        if not data: return pd.DataFrame(columns=headers)
+        df = pd.DataFrame(data)
+        if 'Date' in df.columns:
+            df['Date'] = df['Date'].astype(str)
+        for col in ['Calories', 'Protein', 'Fiber']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        return df
+    except gspread.WorksheetNotFound:
+        # Create sheet if missing
+        ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
+        ws.append_row(headers)
+        return pd.DataFrame(columns=headers)
+
 def hash_password(password):
     """Converts a password into a secure hash"""
     return hashlib.sha256(str.encode(password)).hexdigest()
@@ -917,33 +944,6 @@ def get_google_sheet():
     except Exception as e:
         st.error(f"Connection Error: {e}")
         return None
-
-def get_worksheet_df(worksheet_name, headers):
-    sheet = get_google_sheet()
-    if not sheet: return pd.DataFrame(columns=headers)
-    try:
-        ws = sheet.worksheet(worksheet_name)
-        
-        # AUTO-FIX: Check if sheet is empty and add headers
-        all_vals = ws.get_all_values()
-        if not all_vals:
-            ws.append_row(headers)
-            return pd.DataFrame(columns=headers)
-            
-        data = ws.get_all_records()
-        if not data: return pd.DataFrame(columns=headers)
-        df = pd.DataFrame(data)
-        if 'Date' in df.columns:
-            df['Date'] = df['Date'].astype(str)
-        for col in ['Calories', 'Protein', 'Fiber']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-        return df
-    except gspread.WorksheetNotFound:
-        # Create sheet if missing
-        ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
-        ws.append_row(headers)
-        return pd.DataFrame(columns=headers)
 
 def append_to_worksheet(worksheet_name, row_data):
     sheet = get_google_sheet()
