@@ -735,214 +735,585 @@
 #     else:
 #         st.info("No historical data available yet. Start logging meals to see your stats!")
 
-import streamlit as st
-import pandas as pd
-import calendar
-from datetime import datetime, timedelta
-import plotly.express as px
-import plotly.graph_objects as go
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import hashlib
+# import streamlit as st
+# import pandas as pd
+# import calendar
+# from datetime import datetime, timedelta
+# import plotly.express as px
+# import plotly.graph_objects as go
+# import gspread
+# from oauth2client.service_account import ServiceAccountCredentials
+# import hashlib
 
-# --- CONFIGURATION ---
-SHEET_NAME = "ProNutritionDB"
-WORKSHEET_LOGS = "Logs"
-WORKSHEET_TARGETS = "Targets"
-WORKSHEET_USERS = "Users"
-APP_NAME = "🥗 Pro Nutrition Tracker"
+# # --- CONFIGURATION ---
+# SHEET_NAME = "ProNutritionDB"
+# WORKSHEET_LOGS = "Logs"
+# WORKSHEET_TARGETS = "Targets"
+# WORKSHEET_USERS = "Users"
+# APP_NAME = "🥗 Pro Nutrition Tracker"
 
-# Global Defaults
-DEFAULT_CALS = 2000
-DEFAULT_PRO = 150
-DEFAULT_FIB = 30
+# # Global Defaults
+# DEFAULT_CALS = 2000
+# DEFAULT_PRO = 150
+# DEFAULT_FIB = 30
 
-st.set_page_config(page_title=APP_NAME, page_icon="🥗", layout="wide")
+# st.set_page_config(page_title=APP_NAME, page_icon="🥗", layout="wide")
 
-# --- CSS STYLING ---
+# # --- CSS STYLING ---
 
-st.markdown("""
-    <style>
-    .block-container { padding-top: 1rem; padding-bottom: 5rem; }
-    .app-header { text-align: center; font-size: 2.5rem; font-weight: 800; color: #667eea; margin-bottom: 20px; padding-top: 20px; }
+# st.markdown("""
+#     <style>
+#     .block-container { padding-top: 1rem; padding-bottom: 5rem; }
+#     .app-header { text-align: center; font-size: 2.5rem; font-weight: 800; color: #667eea; margin-bottom: 20px; padding-top: 20px; }
     
-    /* METRICS & CARDS */
-    .metrics-container { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-    .metrics-container::-webkit-scrollbar { display: none; }
-    .metric-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-width: 100%; flex-shrink: 0; padding: 20px 16px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); text-align: center; color: white; position: relative; overflow: hidden; }
-    .metric-card::before { content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none; }
-    .metric-card.cal { background: linear-gradient(135deg, #FF9800, #FF6F00); }
-    .metric-card.pro { background: linear-gradient(135deg, #66BB6A, #388E3C); }
-    .metric-card.fib { background: linear-gradient(135deg, #42A5F5, #1976D2); }
-    .metric-emoji { font-size: 2rem; margin-bottom: 8px; display: block; }
-    .metric-label { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; margin-bottom: 8px; }
-    .metric-value { font-size: 2.2rem; font-weight: 900; margin: 8px 0; line-height: 1; }
-    .metric-delta { font-size: 1rem; opacity: 0.95; font-weight: 600; margin-top: 6px; }
+#     /* METRICS & CARDS */
+#     .metrics-container { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+#     .metrics-container::-webkit-scrollbar { display: none; }
+#     .metric-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-width: 100%; flex-shrink: 0; padding: 20px 16px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); text-align: center; color: white; position: relative; overflow: hidden; }
+#     .metric-card::before { content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none; }
+#     .metric-card.cal { background: linear-gradient(135deg, #FF9800, #FF6F00); }
+#     .metric-card.pro { background: linear-gradient(135deg, #66BB6A, #388E3C); }
+#     .metric-card.fib { background: linear-gradient(135deg, #42A5F5, #1976D2); }
+#     .metric-emoji { font-size: 2rem; margin-bottom: 8px; display: block; }
+#     .metric-label { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; margin-bottom: 8px; }
+#     .metric-value { font-size: 2.2rem; font-weight: 900; margin: 8px 0; line-height: 1; }
+#     .metric-delta { font-size: 1rem; opacity: 0.95; font-weight: 600; margin-top: 6px; }
     
-    /* MEALS */
-    .meal-header { padding: 12px 15px; border-radius: 8px; color: white; font-weight: bold; margin-top: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 1.0rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-family: 'Segoe UI', sans-serif; }
-    .bg-breakfast { background: linear-gradient(90deg, #FF9966, #FF5E62); }
-    .bg-lunch { background: linear-gradient(90deg, #56ab2f, #a8e063); }
-    .bg-dinner { background: linear-gradient(90deg, #2193b0, #6dd5ed); }
-    .bg-snacks { background: linear-gradient(90deg, #DA4453, #89216B); }
+#     /* MEALS */
+#     .meal-header { padding: 12px 15px; border-radius: 8px; color: white; font-weight: bold; margin-top: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 1.0rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-family: 'Segoe UI', sans-serif; }
+#     .bg-breakfast { background: linear-gradient(90deg, #FF9966, #FF5E62); }
+#     .bg-lunch { background: linear-gradient(90deg, #56ab2f, #a8e063); }
+#     .bg-dinner { background: linear-gradient(90deg, #2193b0, #6dd5ed); }
+#     .bg-snacks { background: linear-gradient(90deg, #DA4453, #89216B); }
     
-    /* FOOD CARDS & BUTTONS */
-    .food-card { background-color: white; border: 1px solid #eee; border-left: 5px solid #ddd; padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; }
-    .food-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 4px; display: block; }
-    .food-macros { font-size: 0.85rem; color: #7f8c8d; font-weight: 500; }
-    .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+#     /* FOOD CARDS & BUTTONS */
+#     .food-card { background-color: white; border: 1px solid #eee; border-left: 5px solid #ddd; padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; }
+#     .food-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 4px; display: block; }
+#     .food-macros { font-size: 0.85rem; color: #7f8c8d; font-weight: 500; }
+#     .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
     
-    /* MOBILE RESPONSIVE */
-    @media (max-width: 768px) {
+#     /* MOBILE RESPONSIVE */
+#     @media (max-width: 768px) {
         
-        .metrics-container { gap: 10px; padding: 8px 0; }
-        .metric-card { min-width: 100%; padding: 18px 14px; border-radius: 14px; }
-        .metric-emoji { font-size: 1.6rem; margin-bottom: 6px; }
-        .metric-value { font-size: 1.6rem; }
-        .metric-label { font-size: 1.5rem; }
-        .metric-delta { font-size: 1rem; }
-        .food-name { font-size: 0.95rem; }
-        .food-macros { font-size: 0.75rem; }
-        .stButton button { padding: 0.3rem 0.4rem !important; min-width: 32px !important; height: 32px !important; font-size: 0.75rem !important; }
-        .meal-header { flex-direction: column; align-items: flex-start; gap: 5px; font-size: 0.9rem; padding: 10px 12px; }
-        div[data-testid="stMetricValue"] div { font-size: 1.5rem !important; }
-    }
-    @media (max-width: 600px) { h1 { margin-top: 12px; font-size: 1.6rem !important; } .app-header { font-size: 1.8rem; } }
-    @media (max-width: 480px) { .metric-card { min-width: 100%; padding: 16px 12px; } .metric-emoji { font-size: 2rem; } .metric-value { font-size: 1.6rem; } .metric-label { font-size: 1.3rem; } }
-    </style>
-""", unsafe_allow_html=True)
+#         .metrics-container { gap: 10px; padding: 8px 0; }
+#         .metric-card { min-width: 100%; padding: 18px 14px; border-radius: 14px; }
+#         .metric-emoji { font-size: 1.6rem; margin-bottom: 6px; }
+#         .metric-value { font-size: 1.6rem; }
+#         .metric-label { font-size: 1.5rem; }
+#         .metric-delta { font-size: 1rem; }
+#         .food-name { font-size: 0.95rem; }
+#         .food-macros { font-size: 0.75rem; }
+#         .stButton button { padding: 0.3rem 0.4rem !important; min-width: 32px !important; height: 32px !important; font-size: 0.75rem !important; }
+#         .meal-header { flex-direction: column; align-items: flex-start; gap: 5px; font-size: 0.9rem; padding: 10px 12px; }
+#         div[data-testid="stMetricValue"] div { font-size: 1.5rem !important; }
+#     }
+#     @media (max-width: 600px) { h1 { margin-top: 12px; font-size: 1.6rem !important; } .app-header { font-size: 1.8rem; } }
+#     @media (max-width: 480px) { .metric-card { min-width: 100%; padding: 16px 12px; } .metric-emoji { font-size: 2rem; } .metric-value { font-size: 1.6rem; } .metric-label { font-size: 1.3rem; } }
+#     </style>
+# """, unsafe_allow_html=True)
 
-# --- APP HEADER ---
-st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
+# # --- APP HEADER ---
+# st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
 
 
-# --- GOOGLE SHEETS CONNECTION ---
-@st.cache_resource
-def get_google_sheet():
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    try:
-        sheet = client.open(SHEET_NAME)
-        return sheet
-    except Exception as e:
-        st.error(f"Connection Error: {e}")
-        return None
+# # --- GOOGLE SHEETS CONNECTION ---
+# @st.cache_resource
+# def get_google_sheet():
+#     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+#     creds_dict = dict(st.secrets["gcp_service_account"])
+#     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+#     client = gspread.authorize(creds)
+#     try:
+#         sheet = client.open(SHEET_NAME)
+#         return sheet
+#     except Exception as e:
+#         st.error(f"Connection Error: {e}")
+#         return None
 
-def get_worksheet_df(worksheet_name, headers):
-    sheet = get_google_sheet()
-    if not sheet: return pd.DataFrame(columns=headers)
-    try:
-        ws = sheet.worksheet(worksheet_name)
+# def get_worksheet_df(worksheet_name, headers):
+#     sheet = get_google_sheet()
+#     if not sheet: return pd.DataFrame(columns=headers)
+#     try:
+#         ws = sheet.worksheet(worksheet_name)
         
-        # AUTO-FIX: Check if sheet is empty and add headers
-        all_vals = ws.get_all_values()
-        if not all_vals:
-            ws.append_row(headers)
-            return pd.DataFrame(columns=headers)
+#         # AUTO-FIX: Check if sheet is empty and add headers
+#         all_vals = ws.get_all_values()
+#         if not all_vals:
+#             ws.append_row(headers)
+#             return pd.DataFrame(columns=headers)
             
-        data = ws.get_all_records()
-        if not data: return pd.DataFrame(columns=headers)
-        df = pd.DataFrame(data)
-        if 'Date' in df.columns:
-            df['Date'] = df['Date'].astype(str)
-        for col in ['Calories', 'Protein', 'Fiber']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-        return df
-    except gspread.WorksheetNotFound:
-        # Create sheet if missing
-        ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
-        ws.append_row(headers)
-        return pd.DataFrame(columns=headers)
+#         data = ws.get_all_records()
+#         if not data: return pd.DataFrame(columns=headers)
+#         df = pd.DataFrame(data)
+#         if 'Date' in df.columns:
+#             df['Date'] = df['Date'].astype(str)
+#         for col in ['Calories', 'Protein', 'Fiber']:
+#             if col in df.columns:
+#                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+#         return df
+#     except gspread.WorksheetNotFound:
+#         # Create sheet if missing
+#         ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
+#         ws.append_row(headers)
+#         return pd.DataFrame(columns=headers)
 
-def append_to_worksheet(worksheet_name, row_data):
-    sheet = get_google_sheet()
-    if sheet:
-        try:
-            ws = sheet.worksheet(worksheet_name)
-        except gspread.WorksheetNotFound:
-            ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
-            if worksheet_name == WORKSHEET_LOGS:
-                ws.append_row(["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
-            elif worksheet_name == WORKSHEET_TARGETS:
-                ws.append_row(["Email", "Date", "Calories", "Protein", "Fiber"])
-        ws.append_row(row_data)
-        st.cache_data.clear()
+# def append_to_worksheet(worksheet_name, row_data):
+#     sheet = get_google_sheet()
+#     if sheet:
+#         try:
+#             ws = sheet.worksheet(worksheet_name)
+#         except gspread.WorksheetNotFound:
+#             ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
+#             if worksheet_name == WORKSHEET_LOGS:
+#                 ws.append_row(["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
+#             elif worksheet_name == WORKSHEET_TARGETS:
+#                 ws.append_row(["Email", "Date", "Calories", "Protein", "Fiber"])
+#         ws.append_row(row_data)
+#         st.cache_data.clear()
 
-# --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
-def hash_password(password):
-    """Converts a password into a secure hash"""
-    return hashlib.sha256(str.encode(password)).hexdigest()
+# # --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
+# def hash_password(password):
+#     """Converts a password into a secure hash"""
+#     return hashlib.sha256(str.encode(password)).hexdigest()
 
-def verify_login(email, password):
-    """Checks the Users sheet for a matching Email and Hashed Password"""
-    # Reuse your existing get_worksheet_df function
-    df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
-    if df_users.empty: return False
+# def verify_login(email, password):
+#     """Checks the Users sheet for a matching Email and Hashed Password"""
+#     # Reuse your existing get_worksheet_df function
+#     df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+#     if df_users.empty: return False
     
-    # Filter for the email entered
-    user_row = df_users[df_users['Email'] == email.strip()]
-    if user_row.empty: return False
+#     # Filter for the email entered
+#     user_row = df_users[df_users['Email'] == email.strip()]
+#     if user_row.empty: return False
     
-    # Check if the stored hash matches the input hash
-    stored_hash = str(user_row.iloc[0]['Password']).strip()
-    input_hash = hash_password(password)
+#     # Check if the stored hash matches the input hash
+#     stored_hash = str(user_row.iloc[0]['Password']).strip()
+#     input_hash = hash_password(password)
 
-    # Support both hashed (new) and plain text (old/manual) passwords
-    if stored_hash == input_hash: return True
-    if stored_hash == password: return True 
-    return False
+#     # Support both hashed (new) and plain text (old/manual) passwords
+#     if stored_hash == input_hash: return True
+#     if stored_hash == password: return True 
+#     return False
 
 
-def register_user(email, password, name):
-    """Creates a new user row"""
-    df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
-    if not df_users.empty and email.strip() in df_users['Email'].values:
-        return False, "Email already registered!"
+# def register_user(email, password, name):
+#     """Creates a new user row"""
+#     df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+#     if not df_users.empty and email.strip() in df_users['Email'].values:
+#         return False, "Email already registered!"
     
-    new_hash = hash_password(password)
-    # Append to Users Sheet
-    append_to_worksheet(WORKSHEET_USERS, [email.strip(), new_hash, name.strip()])
-    return True, "Account created! Please login."
+#     new_hash = hash_password(password)
+#     # Append to Users Sheet
+#     append_to_worksheet(WORKSHEET_USERS, [email.strip(), new_hash, name.strip()])
+#     return True, "Account created! Please login."
 
-def reset_password(email, new_password):
-    """Updates the password in the Google Sheet"""
-    sheet = get_google_sheet()
-    if not sheet: return False, "Database Error"
+# def reset_password(email, new_password):
+#     """Updates the password in the Google Sheet"""
+#     sheet = get_google_sheet()
+#     if not sheet: return False, "Database Error"
     
-    try:
-        ws = sheet.worksheet(WORKSHEET_USERS)
-    except gspread.WorksheetNotFound:
-        return False, "Users sheet not found"
+#     try:
+#         ws = sheet.worksheet(WORKSHEET_USERS)
+#     except gspread.WorksheetNotFound:
+#         return False, "Users sheet not found"
         
-    # Find the row number for this email
-    cell = ws.find(email.strip())
-    if not cell: return False, "Email not found in database!"
+#     # Find the row number for this email
+#     cell = ws.find(email.strip())
+#     if not cell: return False, "Email not found in database!"
     
-    # Update Column 2 (Password) with new Hash
-    new_hash = hash_password(new_password)
-    ws.update_cell(cell.row, 2, new_hash)
-    st.cache_data.clear()
-    return True, "Password updated successfully!"
+#     # Update Column 2 (Password) with new Hash
+#     new_hash = hash_password(new_password)
+#     ws.update_cell(cell.row, 2, new_hash)
+#     st.cache_data.clear()
+#     return True, "Password updated successfully!"
 
-# 1. Check URL for Persistence (Keeps user logged in on refresh)
-if "user" in st.query_params:
-    CURRENT_USER = st.query_params["user"]
-else:
-    CURRENT_USER = None
+# # 1. Check URL for Persistence (Keeps user logged in on refresh)
+# if "user" in st.query_params:
+#     CURRENT_USER = st.query_params["user"]
+# else:
+#     CURRENT_USER = None
 
-# 2. If no user in URL, Show Login Screen
-if not CURRENT_USER:
-    # Optional: Try getting cloud header first (for private app support)
+# # 2. If no user in URL, Show Login Screen
+# if not CURRENT_USER:
+#     # Optional: Try getting cloud header first (for private app support)
+#     cloud_user = st.context.headers.get("X-Streamlit-User-Email")
+#     if cloud_user:
+#         CURRENT_USER = cloud_user
+        
+# if not CURRENT_USER:    
+#     # Show Login Form
+#     st.info("👋 Welcome! Please log in.")
+        
+#     tab_login, tab_reg, tab_reset = st.tabs(["🔐 Login", "📝 Register", "🔄 Reset Password"])
+        
+#     with tab_login:
+#         with st.form("login_form"):
+#             email_in = st.text_input("Email")
+#             pass_in = st.text_input("Password", type="password")
+#             remember = st.checkbox("Keep me logged in")
+            
+#             if st.form_submit_button("Login", type="primary"):
+#                 if verify_login(email_in, pass_in):
+#                     if remember:
+#                         st.query_params["user"] = email_in.strip()
+#                     CURRENT_USER = email_in.strip()
+#                     st.rerun() # Refresh to load dashboard
+#                 else:
+#                     st.error("Invalid Email or Password.")
+
+#     with tab_reg:
+#         with st.form("reg_form"):
+#             new_email = st.text_input("New Email")
+#             new_name = st.text_input("Your Name")
+#             new_pass = st.text_input("New Password", type="password")
+#             if st.form_submit_button("Create Account"):
+#                 if new_email and new_pass:
+#                     success, msg = register_user(new_email, new_pass, new_name)
+#                     if success: st.success(msg)
+#                     else: st.error(msg)
+#                 else:
+#                     st.warning("Please fill all fields")
+
+#     with tab_reset:
+#         with st.form("reset_form"):
+#             r_email = st.text_input("Email Address")
+#             r_new = st.text_input("New Password", type="password")
+#             if st.form_submit_button("Update Password"):
+#                 success, msg = reset_password(r_email, r_new)
+#                 if success: st.success(msg)
+#                 else: st.error(msg)
+        
+#         st.stop() # Stop app here until logged in
+
+# # Recover the user from session state after rerun
+# if 'user_email' in st.session_state and st.session_state.user_email:
+#     CURRENT_USER = st.session_state.user_email
+# else:
+#     # This should theoretically not happen if st.stop() works, 
+#     # but it's a safe fallback to prevent NameError
+#     CURRENT_USER = None
+#     st.rerun()
+
+# # --- ONBOARDING LOGIC ---
+# def check_user_has_targets():
+#     df = get_worksheet_df(WORKSHEET_TARGETS, ["Email", "Date", "Calories", "Protein", "Fiber"])
+#     if df.empty or 'Email' not in df.columns: return False
+#     return not df[df['Email'] == CURRENT_USER].empty
+
+# def save_initial_targets(cals, pro, fib):
+#     today = datetime.now().strftime("%Y-%m-%d")
+#     append_to_worksheet(WORKSHEET_TARGETS, [CURRENT_USER, today, int(cals), int(pro), int(fib)])
+
+# if 'onboarding_complete' not in st.session_state:
+#     st.session_state.onboarding_complete = check_user_has_targets()
+
+# # ==========================================
+# # 🚀 SCREEN 1: ONBOARDING
+# # ==========================================
+# if not st.session_state.onboarding_complete:
+#     st.markdown("---")
+#     st.subheader(f"👋 Welcome {CURRENT_USER}!")
+#     st.write("Let's set your personal goals.")
+    
+#     with st.container(border=True):
+#         col1, col2, col3 = st.columns(3)
+#         in_cal = col1.number_input("Daily Calories", value=DEFAULT_CALS, step=50)
+#         in_pro = col2.number_input("Protein (g)", value=DEFAULT_PRO, step=5)
+#         in_fib = col3.number_input("Fiber (g)", value=DEFAULT_FIB, step=5)
+        
+#         st.markdown("<br>", unsafe_allow_html=True)
+#         c_save, c_skip = st.columns([2, 1])
+        
+#         with c_save:
+#             st.markdown('<div class="big-btn">', unsafe_allow_html=True)
+#             if st.button("🚀 Save & Start", type="primary"):
+#                 save_initial_targets(in_cal, in_pro, in_fib)
+#                 st.session_state.onboarding_complete = True
+#                 st.rerun()
+#             st.markdown('</div>', unsafe_allow_html=True)
+
+#         with c_skip:
+#             if st.button("Skip for now"):
+#                 save_initial_targets(DEFAULT_CALS, DEFAULT_PRO, DEFAULT_FIB)
+#                 st.session_state.onboarding_complete = True
+#                 st.rerun()
+#     st.stop()
+
+# # ==========================================
+# # 🚀 SCREEN 2: MAIN DASHBOARD
+# # ==========================================
+
+
+
+# # --- DATA HELPERS ---
+# def load_log():
+#     df = get_worksheet_df(WORKSHEET_LOGS, ["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
+#     if not df.empty and 'Email' in df.columns:
+#         df = df[df['Email'] == CURRENT_USER]
+#         if 'Date' in df.columns:
+#             df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+#     return df
+
+# def save_entry(date_obj, meal, item, cals, pro, fib):
+#     append_to_worksheet(WORKSHEET_LOGS, [CURRENT_USER, date_obj.strftime("%Y-%m-%d"), meal, item, int(cals), float(pro), float(fib)])
+
+# def update_entry(real_idx, meal, item, cals, pro, fib):
+#     sheet = get_google_sheet()
+#     ws = sheet.worksheet(WORKSHEET_LOGS)
+#     r = real_idx + 2
+#     ws.update(f"C{r}:G{r}", [[meal, item, int(cals), float(pro), float(fib)]])
+#     st.cache_data.clear()
+
+# def delete_entry(real_idx):
+#     sheet = get_google_sheet()
+#     ws = sheet.worksheet(WORKSHEET_LOGS)
+#     ws.delete_rows(real_idx + 2)
+#     st.cache_data.clear()
+
+# def get_target_for_date(date_obj):
+#     df = get_worksheet_df(WORKSHEET_TARGETS, ["Email", "Date", "Calories", "Protein", "Fiber"])
+#     if not df.empty and 'Email' in df.columns:
+#         df = df[df['Email'] == CURRENT_USER]
+#     date_str = date_obj.strftime("%Y-%m-%d")
+#     if not df.empty and 'Date' in df.columns:
+#         valid = df[df['Date'] <= date_str]
+#         if not valid.empty:
+#             latest = valid.sort_values('Date', ascending=False).iloc[0]
+#             return latest['Calories'], latest['Protein'], latest['Fiber']
+#     return DEFAULT_CALS, DEFAULT_PRO, DEFAULT_FIB
+
+# def save_smart_target(date_obj, cals, pro, fib):
+#     append_to_worksheet(WORKSHEET_TARGETS, [CURRENT_USER, date_obj.strftime("%Y-%m-%d"), int(cals), int(pro), int(fib)])
+
+# def calculate_averages(df):
+#     if df.empty: return None, None, None, None
+#     daily = df.groupby('Date')[['Calories', 'Protein', 'Fiber']].sum().reset_index()
+#     daily['Date'] = pd.to_datetime(daily['Date'])
+#     today = pd.to_datetime(datetime.now().date())
+    
+#     start_week = today - timedelta(days=7)
+#     weekly = daily[(daily['Date'] >= start_week) & (daily['Date'] <= today)]
+#     avg_week = weekly[['Calories', 'Protein', 'Fiber']].mean() if not weekly.empty else pd.Series([0,0,0], index=['Calories','Protein','Fiber'])
+    
+#     start_month = today - timedelta(days=30)
+#     monthly = daily[(daily['Date'] >= start_month) & (daily['Date'] <= today)]
+#     avg_month = monthly[['Calories', 'Protein', 'Fiber']].mean() if not monthly.empty else pd.Series([0,0,0], index=['Calories','Protein','Fiber'])
+    
+#     avg_year = daily[['Calories', 'Protein', 'Fiber']].mean()
+#     return avg_week, avg_month, avg_year, daily
+
+# # --- STATE ---
+# if 'selected_date' not in st.session_state: st.session_state.selected_date = datetime.now().date()
+# if 'edit_mode_index' not in st.session_state: st.session_state.edit_mode_index = None
+# if 'cal_month' not in st.session_state: st.session_state.cal_month = datetime.now().month
+# if 'cal_year' not in st.session_state: st.session_state.cal_year = datetime.now().year
+
+# # --- SIDEBAR ---
+# with st.sidebar:
+#     users_df = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+#     if not users_df.empty:
+#         user_info = users_df[users_df['Email'] == CURRENT_USER]
+#         if not user_info.empty:
+#             real_name = user_info.iloc[0]['Name']
+#             st.write(f"👤 **{real_name}**")
+#         else:
+#             st.write(f"👤 **{CURRENT_USER}**")
+#     if st.button("Logout"):
+#         st.session_state.manual_user_email = None
+#         st.rerun()
+#     st.divider()
+    
+#     st.header("📅 Navigator")
+#     c1, c2, c3 = st.columns([1, 4, 1])
+#     if c1.button("◀", key="p"): st.session_state.selected_date -= timedelta(days=1); st.session_state.edit_mode_index = None; st.rerun()
+#     st.session_state.selected_date = c2.date_input("Date", st.session_state.selected_date, label_visibility="collapsed")
+#     if c3.button("▶", key="n"): st.session_state.selected_date += timedelta(days=1); st.session_state.edit_mode_index = None; st.rerun()
+    
+#     if st.button("Return to Today", icon=":material/today:", width='stretch'):
+#         st.session_state.selected_date = datetime.now().date()
+#         st.session_state.edit_mode_index = None
+#         st.rerun()
+
+#     st.divider()
+#     with st.expander("🎯 Update Targets"):
+#         curr_c, curr_p, curr_f = get_target_for_date(st.session_state.selected_date)
+#         with st.form("tgt"):
+#             nc = st.number_input("Cals", value=int(curr_c), step=50)
+#             np = st.number_input("Prot", value=int(curr_p), step=5)
+#             nf = st.number_input("Fib", value=int(curr_f), step=5)
+#             if st.form_submit_button("Save"):
+#                 save_smart_target(st.session_state.selected_date, nc, np, nf)
+#                 st.rerun()
+
+# # --- MAIN ---
+# current_date_str = st.session_state.selected_date.strftime("%Y-%m-%d")
+# df_log = load_log()
+# df_today = df_log[df_log['Date'] == current_date_str].copy().reset_index(drop=True)
+
+# goal_cals, goal_pro, goal_fib = get_target_for_date(st.session_state.selected_date)
+# ac = df_today['Calories'].sum()
+# ap = df_today['Protein'].sum()
+# af = df_today['Fiber'].sum()
+
+# st.subheader(f"📅 {st.session_state.selected_date.strftime('%b %d')}")
+# c1, c2, c3 = st.columns(3)
+# with c1: st.markdown(f"""<div class="metrics-container"><div class="metric-card cal"><div class="metric-emoji">🔥</div><div class="metric-label">Calories</div><div class="metric-value">{int(ac)}</div><div class="metric-delta">{int(goal_cals - ac)} left</div></div></div>""", unsafe_allow_html=True)
+# with c2: st.markdown(f"""<div class="metrics-container"><div class="metric-card pro"><div class="metric-emoji">💪</div><div class="metric-label">Protein</div><div class="metric-value">{round(ap,1)}g</div><div class="metric-delta">{round(ap - goal_pro,1)}g / {int(goal_pro)}g</div></div></div>""", unsafe_allow_html=True)
+# with c3: st.markdown(f"""<div class="metrics-container"><div class="metric-card fib"><div class="metric-emoji">🌾</div><div class="metric-label">Fiber</div><div class="metric-value">{round(af,1)}g</div><div class="metric-delta">{round(af - goal_fib,1)}g / {int(goal_fib)}g</div></div></div>""", unsafe_allow_html=True)
+
+# st.divider()
+
+# # --- INPUT FORM ---
+# st.markdown('<div class="input-container">', unsafe_allow_html=True)
+# st.caption("➕ Add Food Entry")
+# with st.form("add_food", clear_on_submit=True, border=False):
+#     c_m, c_n = st.columns([1,3])
+#     meal_in = c_m.selectbox("Meal", ["Breakfast", "Lunch", "Snacks", "Dinner"], label_visibility="collapsed")
+#     name_in = c_n.text_input("Item Name", placeholder="e.g. 2 Eggs", label_visibility="collapsed")
+#     c1, c2, c3 = st.columns(3)
+#     cal_in = c1.number_input("Calories", step=10, help="Calories")
+#     pro_in = c2.number_input("Protein (g)", step=1.0, help="Protein")
+#     fib_in = c3.number_input("Fiber (g)", step=1.0, help="Fiber")
+    
+#     # --- VALIDATION LOGIC ---
+#     if st.form_submit_button("Add Entry", type="primary"):
+#         if not name_in.strip():
+#             st.error("⚠️ Please enter a food name!")
+#         elif cal_in <= 0:
+#             st.error("⚠️ Calories must be greater than 0!")
+#         else:
+#             save_entry(st.session_state.selected_date, meal_in, name_in, cal_in, pro_in, fib_in)
+#             st.rerun()
+# st.markdown('</div>', unsafe_allow_html=True)
+
+# tab1, tab2, tab3 = st.tabs(["📊 Visuals", "📝 Detailed Log", "📅 History"])
+
+# with tab1:
+#     if not df_today.empty:
+#         c1, c2 = st.columns(2)
+#         with c1:
+#             fig = px.pie(df_today, values='Calories', names='Meal', hole=0.5, color='Meal', color_discrete_map={'Breakfast':'#FF9966', 'Lunch':'#56ab2f', 'Dinner':'#2193b0', 'Snacks':'#DA4453'})
+#             st.plotly_chart(fig, use_container_width=True)
+#         with c2:
+#             chart = df_today.groupby('Meal')[['Protein','Fiber']].sum().reset_index().melt('Meal')
+#             st.plotly_chart(px.bar(chart, x='Meal', y='value', color='variable', barmode='group'), use_container_width=True)
+#     else: st.info("No data today")
+
+# with tab2:
+#     if not df_today.empty:
+#         # Load Raw Data to map indices for editing
+#         df_all_raw = get_worksheet_df(WORKSHEET_LOGS, ["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
+#         for meal in ["Breakfast", "Lunch", "Dinner", "Snacks"]:
+#             rows = df_today[df_today['Meal'] == meal]
+#             if rows.empty: continue
+#             st.markdown(f"### {meal}")
+#             for idx, row in rows.iterrows():
+#                 # Find real index in sheet
+#                 mask = (df_all_raw['Email'] == CURRENT_USER) & (df_all_raw['Date'] == current_date_str) & (df_all_raw['Meal'] == row['Meal']) & (df_all_raw['Item'] == row['Item']) & (df_all_raw['Calories'] == row['Calories'])
+#                 real_indices = df_all_raw[mask].index.tolist()
+#                 real_idx = real_indices[0] if real_indices else -1
+#                 unique_key = f"{meal}_{real_idx}"
+
+#                 if st.session_state.edit_mode_index == unique_key:
+#                     with st.container():
+#                         st.markdown(f"**Editing: {row['Item']}**")
+#                         ec1, ec2, ec3, ec4 = st.columns([3,1,1,1])
+#                         ni = ec1.text_input("Name", row['Item'], key=f"n_{unique_key}")
+#                         nc = ec2.number_input("Cal", value=int(row['Calories']), key=f"c_{unique_key}")
+#                         np = ec3.number_input("Pro", value=float(row['Protein']), key=f"p_{unique_key}")
+#                         nf = ec4.number_input("Fib", value=float(row['Fiber']), key=f"f_{unique_key}")
+#                         if st.button("Save", key=f"s_{unique_key}"):
+#                             update_entry(real_idx, meal, ni, nc, np, nf)
+#                             st.session_state.edit_mode_index = None
+#                             st.rerun()
+#                 else:
+#                     c1, c2, c3 = st.columns([8,1,1])
+#                     c1.markdown(f"**{row['Item']}** • {int(row['Calories'])} Cal • {row['Protein']}p • {row['Fiber']}f")
+#                     if c2.button("✏️", key=f"e_{unique_key}"):
+#                         st.session_state.edit_mode_index = unique_key
+#                         st.rerun()
+#                     if c3.button("🗑️", key=f"d_{unique_key}"):
+#                         delete_entry(real_idx)
+#                         st.rerun()
+#                 st.divider()
+
+# with tab3:
+#     st.subheader("📈 Statistics")
+#     avg_week, avg_month, avg_all, daily_totals = calculate_averages(df_log)
+#     if daily_totals is not None and not daily_totals.empty:
+#         c1, c2, c3 = st.columns(3)
+#         def fmt(s): return f"{int(s['Calories'])} Cal" if not s.empty else "0 Cal"
+#         with c1: st.metric("7-Day Avg", fmt(avg_week))
+#         with c2: st.metric("30-Day Avg", fmt(avg_month))
+#         with c3: st.metric("All-Time Avg", fmt(avg_all))
+        
+#         st.divider()
+#         st.subheader("🗓️ Calendar")
+#         # Calendar Controls
+#         col_prev, col_m, col_y, col_next = st.columns([1, 2, 2, 1])
+#         def next_m():
+#             if st.session_state.cal_month == 12: st.session_state.cal_month = 1; st.session_state.cal_year += 1
+#             else: st.session_state.cal_month += 1
+#         def prev_m():
+#             if st.session_state.cal_month == 1: st.session_state.cal_month = 12; st.session_state.cal_year -= 1
+#             else: st.session_state.cal_month -= 1
+#         with col_prev: st.button("◀", on_click=prev_m)
+#         with col_m: st.write(f"**{calendar.month_name[st.session_state.cal_month]}**")
+#         with col_y: st.write(f"**{st.session_state.cal_year}**")
+#         with col_next: st.button("▶", on_click=next_m)
+
+#         # Heatmap Logic
+#         sel_year, sel_month = st.session_state.cal_year, st.session_state.cal_month
+#         cal_obj = calendar.Calendar(firstweekday=0)
+#         month_days = cal_obj.monthdayscalendar(sel_year, sel_month)
+#         x_vals, y_vals, z_vals, text_vals = [], [], [], []
+#         mask = (daily_totals['Date'].dt.year == sel_year) & (daily_totals['Date'].dt.month == sel_month)
+#         month_data = daily_totals[mask].set_index('Date')
+        
+#         for week_idx, week in enumerate(month_days):
+#             for day_idx, day_num in enumerate(week):
+#                 x_vals.append(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][day_idx])
+#                 y_vals.append(f"Week {week_idx+1}")
+#                 if day_num == 0:
+#                     z_vals.append(None); text_vals.append("")
+#                 else:
+#                     date_key = pd.Timestamp(year=sel_year, month=sel_month, day=day_num)
+#                     text_vals.append(str(day_num))
+#                     if date_key in month_data.index: z_vals.append(month_data.loc[date_key]['Calories'])
+#                     else: z_vals.append(0)
+
+#         fig = go.Figure(data=go.Heatmap(
+#             x=x_vals, y=y_vals, z=z_vals, text=text_vals, texttemplate="%{text}",
+#             colorscale=[[0, '#f8f9fa'], [1, '#319795']], showscale=False
+#         ))
+#         fig.update_layout(height=350, yaxis=dict(autorange="reversed", fixedrange=True), xaxis=dict(side="top", fixedrange=True), margin=dict(t=30,b=0,l=0,r=0))
+#         st.plotly_chart(fig, use_container_width=True)
+#     else:
+#         st.info("Start logging to see history!")
+
+
+
+# === USER AUTHENTICATION LOGIC ===
+
+# Initialize session state for user
+if 'user_email' not in st.session_state:
+    st.session_state.user_email = None
+
+# Check if user is already logged in via URL params or session
+if "user" in st.query_params and not st.session_state.user_email:
+    st.session_state.user_email = st.query_params["user"]
+
+# Try cloud header for Streamlit Cloud private apps
+if not st.session_state.user_email:
     cloud_user = st.context.headers.get("X-Streamlit-User-Email")
     if cloud_user:
-        CURRENT_USER = cloud_user
-        
+        st.session_state.user_email = cloud_user
+
+CURRENT_USER = st.session_state.user_email
+
+# If no user logged in, show login screen
 if not CURRENT_USER:    
-    # Show Login Form
     st.info("👋 Welcome! Please log in.")
         
     tab_login, tab_reg, tab_reset = st.tabs(["🔐 Login", "📝 Register", "🔄 Reset Password"])
@@ -955,10 +1326,12 @@ if not CURRENT_USER:
             
             if st.form_submit_button("Login", type="primary"):
                 if verify_login(email_in, pass_in):
+                    # Store in session state
+                    st.session_state.user_email = email_in.strip()
+                    # Store in URL if "remember me" is checked
                     if remember:
                         st.query_params["user"] = email_in.strip()
-                    CURRENT_USER = email_in.strip()
-                    st.rerun() # Refresh to load dashboard
+                    st.rerun()
                 else:
                     st.error("Invalid Email or Password.")
 
@@ -983,311 +1356,5 @@ if not CURRENT_USER:
                 success, msg = reset_password(r_email, r_new)
                 if success: st.success(msg)
                 else: st.error(msg)
-        
-        st.stop() # Stop app here until logged in
-
-# Recover the user from session state after rerun
-if 'user_email' in st.session_state and st.session_state.user_email:
-    CURRENT_USER = st.session_state.user_email
-else:
-    # This should theoretically not happen if st.stop() works, 
-    # but it's a safe fallback to prevent NameError
-    CURRENT_USER = None
-    st.rerun()
-
-# --- ONBOARDING LOGIC ---
-def check_user_has_targets():
-    df = get_worksheet_df(WORKSHEET_TARGETS, ["Email", "Date", "Calories", "Protein", "Fiber"])
-    if df.empty or 'Email' not in df.columns: return False
-    return not df[df['Email'] == CURRENT_USER].empty
-
-def save_initial_targets(cals, pro, fib):
-    today = datetime.now().strftime("%Y-%m-%d")
-    append_to_worksheet(WORKSHEET_TARGETS, [CURRENT_USER, today, int(cals), int(pro), int(fib)])
-
-if 'onboarding_complete' not in st.session_state:
-    st.session_state.onboarding_complete = check_user_has_targets()
-
-# ==========================================
-# 🚀 SCREEN 1: ONBOARDING
-# ==========================================
-if not st.session_state.onboarding_complete:
-    st.markdown("---")
-    st.subheader(f"👋 Welcome {CURRENT_USER}!")
-    st.write("Let's set your personal goals.")
     
-    with st.container(border=True):
-        col1, col2, col3 = st.columns(3)
-        in_cal = col1.number_input("Daily Calories", value=DEFAULT_CALS, step=50)
-        in_pro = col2.number_input("Protein (g)", value=DEFAULT_PRO, step=5)
-        in_fib = col3.number_input("Fiber (g)", value=DEFAULT_FIB, step=5)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        c_save, c_skip = st.columns([2, 1])
-        
-        with c_save:
-            st.markdown('<div class="big-btn">', unsafe_allow_html=True)
-            if st.button("🚀 Save & Start", type="primary"):
-                save_initial_targets(in_cal, in_pro, in_fib)
-                st.session_state.onboarding_complete = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with c_skip:
-            if st.button("Skip for now"):
-                save_initial_targets(DEFAULT_CALS, DEFAULT_PRO, DEFAULT_FIB)
-                st.session_state.onboarding_complete = True
-                st.rerun()
-    st.stop()
-
-# ==========================================
-# 🚀 SCREEN 2: MAIN DASHBOARD
-# ==========================================
-
-
-
-# --- DATA HELPERS ---
-def load_log():
-    df = get_worksheet_df(WORKSHEET_LOGS, ["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
-    if not df.empty and 'Email' in df.columns:
-        df = df[df['Email'] == CURRENT_USER]
-        if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
-    return df
-
-def save_entry(date_obj, meal, item, cals, pro, fib):
-    append_to_worksheet(WORKSHEET_LOGS, [CURRENT_USER, date_obj.strftime("%Y-%m-%d"), meal, item, int(cals), float(pro), float(fib)])
-
-def update_entry(real_idx, meal, item, cals, pro, fib):
-    sheet = get_google_sheet()
-    ws = sheet.worksheet(WORKSHEET_LOGS)
-    r = real_idx + 2
-    ws.update(f"C{r}:G{r}", [[meal, item, int(cals), float(pro), float(fib)]])
-    st.cache_data.clear()
-
-def delete_entry(real_idx):
-    sheet = get_google_sheet()
-    ws = sheet.worksheet(WORKSHEET_LOGS)
-    ws.delete_rows(real_idx + 2)
-    st.cache_data.clear()
-
-def get_target_for_date(date_obj):
-    df = get_worksheet_df(WORKSHEET_TARGETS, ["Email", "Date", "Calories", "Protein", "Fiber"])
-    if not df.empty and 'Email' in df.columns:
-        df = df[df['Email'] == CURRENT_USER]
-    date_str = date_obj.strftime("%Y-%m-%d")
-    if not df.empty and 'Date' in df.columns:
-        valid = df[df['Date'] <= date_str]
-        if not valid.empty:
-            latest = valid.sort_values('Date', ascending=False).iloc[0]
-            return latest['Calories'], latest['Protein'], latest['Fiber']
-    return DEFAULT_CALS, DEFAULT_PRO, DEFAULT_FIB
-
-def save_smart_target(date_obj, cals, pro, fib):
-    append_to_worksheet(WORKSHEET_TARGETS, [CURRENT_USER, date_obj.strftime("%Y-%m-%d"), int(cals), int(pro), int(fib)])
-
-def calculate_averages(df):
-    if df.empty: return None, None, None, None
-    daily = df.groupby('Date')[['Calories', 'Protein', 'Fiber']].sum().reset_index()
-    daily['Date'] = pd.to_datetime(daily['Date'])
-    today = pd.to_datetime(datetime.now().date())
-    
-    start_week = today - timedelta(days=7)
-    weekly = daily[(daily['Date'] >= start_week) & (daily['Date'] <= today)]
-    avg_week = weekly[['Calories', 'Protein', 'Fiber']].mean() if not weekly.empty else pd.Series([0,0,0], index=['Calories','Protein','Fiber'])
-    
-    start_month = today - timedelta(days=30)
-    monthly = daily[(daily['Date'] >= start_month) & (daily['Date'] <= today)]
-    avg_month = monthly[['Calories', 'Protein', 'Fiber']].mean() if not monthly.empty else pd.Series([0,0,0], index=['Calories','Protein','Fiber'])
-    
-    avg_year = daily[['Calories', 'Protein', 'Fiber']].mean()
-    return avg_week, avg_month, avg_year, daily
-
-# --- STATE ---
-if 'selected_date' not in st.session_state: st.session_state.selected_date = datetime.now().date()
-if 'edit_mode_index' not in st.session_state: st.session_state.edit_mode_index = None
-if 'cal_month' not in st.session_state: st.session_state.cal_month = datetime.now().month
-if 'cal_year' not in st.session_state: st.session_state.cal_year = datetime.now().year
-
-# --- SIDEBAR ---
-with st.sidebar:
-    users_df = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
-    if not users_df.empty:
-        user_info = users_df[users_df['Email'] == CURRENT_USER]
-        if not user_info.empty:
-            real_name = user_info.iloc[0]['Name']
-            st.write(f"👤 **{real_name}**")
-        else:
-            st.write(f"👤 **{CURRENT_USER}**")
-    if st.button("Logout"):
-        st.session_state.manual_user_email = None
-        st.rerun()
-    st.divider()
-    
-    st.header("📅 Navigator")
-    c1, c2, c3 = st.columns([1, 4, 1])
-    if c1.button("◀", key="p"): st.session_state.selected_date -= timedelta(days=1); st.session_state.edit_mode_index = None; st.rerun()
-    st.session_state.selected_date = c2.date_input("Date", st.session_state.selected_date, label_visibility="collapsed")
-    if c3.button("▶", key="n"): st.session_state.selected_date += timedelta(days=1); st.session_state.edit_mode_index = None; st.rerun()
-    
-    if st.button("Return to Today", icon=":material/today:", width='stretch'):
-        st.session_state.selected_date = datetime.now().date()
-        st.session_state.edit_mode_index = None
-        st.rerun()
-
-    st.divider()
-    with st.expander("🎯 Update Targets"):
-        curr_c, curr_p, curr_f = get_target_for_date(st.session_state.selected_date)
-        with st.form("tgt"):
-            nc = st.number_input("Cals", value=int(curr_c), step=50)
-            np = st.number_input("Prot", value=int(curr_p), step=5)
-            nf = st.number_input("Fib", value=int(curr_f), step=5)
-            if st.form_submit_button("Save"):
-                save_smart_target(st.session_state.selected_date, nc, np, nf)
-                st.rerun()
-
-# --- MAIN ---
-current_date_str = st.session_state.selected_date.strftime("%Y-%m-%d")
-df_log = load_log()
-df_today = df_log[df_log['Date'] == current_date_str].copy().reset_index(drop=True)
-
-goal_cals, goal_pro, goal_fib = get_target_for_date(st.session_state.selected_date)
-ac = df_today['Calories'].sum()
-ap = df_today['Protein'].sum()
-af = df_today['Fiber'].sum()
-
-st.subheader(f"📅 {st.session_state.selected_date.strftime('%b %d')}")
-c1, c2, c3 = st.columns(3)
-with c1: st.markdown(f"""<div class="metrics-container"><div class="metric-card cal"><div class="metric-emoji">🔥</div><div class="metric-label">Calories</div><div class="metric-value">{int(ac)}</div><div class="metric-delta">{int(goal_cals - ac)} left</div></div></div>""", unsafe_allow_html=True)
-with c2: st.markdown(f"""<div class="metrics-container"><div class="metric-card pro"><div class="metric-emoji">💪</div><div class="metric-label">Protein</div><div class="metric-value">{round(ap,1)}g</div><div class="metric-delta">{round(ap - goal_pro,1)}g / {int(goal_pro)}g</div></div></div>""", unsafe_allow_html=True)
-with c3: st.markdown(f"""<div class="metrics-container"><div class="metric-card fib"><div class="metric-emoji">🌾</div><div class="metric-label">Fiber</div><div class="metric-value">{round(af,1)}g</div><div class="metric-delta">{round(af - goal_fib,1)}g / {int(goal_fib)}g</div></div></div>""", unsafe_allow_html=True)
-
-st.divider()
-
-# --- INPUT FORM ---
-st.markdown('<div class="input-container">', unsafe_allow_html=True)
-st.caption("➕ Add Food Entry")
-with st.form("add_food", clear_on_submit=True, border=False):
-    c_m, c_n = st.columns([1,3])
-    meal_in = c_m.selectbox("Meal", ["Breakfast", "Lunch", "Snacks", "Dinner"], label_visibility="collapsed")
-    name_in = c_n.text_input("Item Name", placeholder="e.g. 2 Eggs", label_visibility="collapsed")
-    c1, c2, c3 = st.columns(3)
-    cal_in = c1.number_input("Calories", step=10, help="Calories")
-    pro_in = c2.number_input("Protein (g)", step=1.0, help="Protein")
-    fib_in = c3.number_input("Fiber (g)", step=1.0, help="Fiber")
-    
-    # --- VALIDATION LOGIC ---
-    if st.form_submit_button("Add Entry", type="primary"):
-        if not name_in.strip():
-            st.error("⚠️ Please enter a food name!")
-        elif cal_in <= 0:
-            st.error("⚠️ Calories must be greater than 0!")
-        else:
-            save_entry(st.session_state.selected_date, meal_in, name_in, cal_in, pro_in, fib_in)
-            st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
-
-tab1, tab2, tab3 = st.tabs(["📊 Visuals", "📝 Detailed Log", "📅 History"])
-
-with tab1:
-    if not df_today.empty:
-        c1, c2 = st.columns(2)
-        with c1:
-            fig = px.pie(df_today, values='Calories', names='Meal', hole=0.5, color='Meal', color_discrete_map={'Breakfast':'#FF9966', 'Lunch':'#56ab2f', 'Dinner':'#2193b0', 'Snacks':'#DA4453'})
-            st.plotly_chart(fig, use_container_width=True)
-        with c2:
-            chart = df_today.groupby('Meal')[['Protein','Fiber']].sum().reset_index().melt('Meal')
-            st.plotly_chart(px.bar(chart, x='Meal', y='value', color='variable', barmode='group'), use_container_width=True)
-    else: st.info("No data today")
-
-with tab2:
-    if not df_today.empty:
-        # Load Raw Data to map indices for editing
-        df_all_raw = get_worksheet_df(WORKSHEET_LOGS, ["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
-        for meal in ["Breakfast", "Lunch", "Dinner", "Snacks"]:
-            rows = df_today[df_today['Meal'] == meal]
-            if rows.empty: continue
-            st.markdown(f"### {meal}")
-            for idx, row in rows.iterrows():
-                # Find real index in sheet
-                mask = (df_all_raw['Email'] == CURRENT_USER) & (df_all_raw['Date'] == current_date_str) & (df_all_raw['Meal'] == row['Meal']) & (df_all_raw['Item'] == row['Item']) & (df_all_raw['Calories'] == row['Calories'])
-                real_indices = df_all_raw[mask].index.tolist()
-                real_idx = real_indices[0] if real_indices else -1
-                unique_key = f"{meal}_{real_idx}"
-
-                if st.session_state.edit_mode_index == unique_key:
-                    with st.container():
-                        st.markdown(f"**Editing: {row['Item']}**")
-                        ec1, ec2, ec3, ec4 = st.columns([3,1,1,1])
-                        ni = ec1.text_input("Name", row['Item'], key=f"n_{unique_key}")
-                        nc = ec2.number_input("Cal", value=int(row['Calories']), key=f"c_{unique_key}")
-                        np = ec3.number_input("Pro", value=float(row['Protein']), key=f"p_{unique_key}")
-                        nf = ec4.number_input("Fib", value=float(row['Fiber']), key=f"f_{unique_key}")
-                        if st.button("Save", key=f"s_{unique_key}"):
-                            update_entry(real_idx, meal, ni, nc, np, nf)
-                            st.session_state.edit_mode_index = None
-                            st.rerun()
-                else:
-                    c1, c2, c3 = st.columns([8,1,1])
-                    c1.markdown(f"**{row['Item']}** • {int(row['Calories'])} Cal • {row['Protein']}p • {row['Fiber']}f")
-                    if c2.button("✏️", key=f"e_{unique_key}"):
-                        st.session_state.edit_mode_index = unique_key
-                        st.rerun()
-                    if c3.button("🗑️", key=f"d_{unique_key}"):
-                        delete_entry(real_idx)
-                        st.rerun()
-                st.divider()
-
-with tab3:
-    st.subheader("📈 Statistics")
-    avg_week, avg_month, avg_all, daily_totals = calculate_averages(df_log)
-    if daily_totals is not None and not daily_totals.empty:
-        c1, c2, c3 = st.columns(3)
-        def fmt(s): return f"{int(s['Calories'])} Cal" if not s.empty else "0 Cal"
-        with c1: st.metric("7-Day Avg", fmt(avg_week))
-        with c2: st.metric("30-Day Avg", fmt(avg_month))
-        with c3: st.metric("All-Time Avg", fmt(avg_all))
-        
-        st.divider()
-        st.subheader("🗓️ Calendar")
-        # Calendar Controls
-        col_prev, col_m, col_y, col_next = st.columns([1, 2, 2, 1])
-        def next_m():
-            if st.session_state.cal_month == 12: st.session_state.cal_month = 1; st.session_state.cal_year += 1
-            else: st.session_state.cal_month += 1
-        def prev_m():
-            if st.session_state.cal_month == 1: st.session_state.cal_month = 12; st.session_state.cal_year -= 1
-            else: st.session_state.cal_month -= 1
-        with col_prev: st.button("◀", on_click=prev_m)
-        with col_m: st.write(f"**{calendar.month_name[st.session_state.cal_month]}**")
-        with col_y: st.write(f"**{st.session_state.cal_year}**")
-        with col_next: st.button("▶", on_click=next_m)
-
-        # Heatmap Logic
-        sel_year, sel_month = st.session_state.cal_year, st.session_state.cal_month
-        cal_obj = calendar.Calendar(firstweekday=0)
-        month_days = cal_obj.monthdayscalendar(sel_year, sel_month)
-        x_vals, y_vals, z_vals, text_vals = [], [], [], []
-        mask = (daily_totals['Date'].dt.year == sel_year) & (daily_totals['Date'].dt.month == sel_month)
-        month_data = daily_totals[mask].set_index('Date')
-        
-        for week_idx, week in enumerate(month_days):
-            for day_idx, day_num in enumerate(week):
-                x_vals.append(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][day_idx])
-                y_vals.append(f"Week {week_idx+1}")
-                if day_num == 0:
-                    z_vals.append(None); text_vals.append("")
-                else:
-                    date_key = pd.Timestamp(year=sel_year, month=sel_month, day=day_num)
-                    text_vals.append(str(day_num))
-                    if date_key in month_data.index: z_vals.append(month_data.loc[date_key]['Calories'])
-                    else: z_vals.append(0)
-
-        fig = go.Figure(data=go.Heatmap(
-            x=x_vals, y=y_vals, z=z_vals, text=text_vals, texttemplate="%{text}",
-            colorscale=[[0, '#f8f9fa'], [1, '#319795']], showscale=False
-        ))
-        fig.update_layout(height=350, yaxis=dict(autorange="reversed", fixedrange=True), xaxis=dict(side="top", fixedrange=True), margin=dict(t=30,b=0,l=0,r=0))
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Start logging to see history!")
+    st.stop()  # Stop execution here if not logged in
