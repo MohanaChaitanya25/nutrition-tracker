@@ -30,7 +30,8 @@ st.markdown("""
         font-size: 2.5rem; 
         font-weight: 800; 
         color: #667eea; 
-        margin-bottom: 20px; 
+        margin-bottom: 20px;
+        padding-top: 20px;
     }
     .metrics-container { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .metrics-container::-webkit-scrollbar { display: none; }
