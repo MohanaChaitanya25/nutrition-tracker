@@ -528,7 +528,7 @@ with tab2:
             <div class="meal-header {css_classes[meal]}">
                 <span>{meal}</span>
                 <span style="font-size:0.85em; opacity:0.95; font-weight:normal;">
-                    {int(m_cals)} Kcal &nbsp;|&nbsp; {int(m_pro)}g Prot &nbsp;|&nbsp; {int(m_fib)}g Fib
+                    {int(m_cals)} Kcal &nbsp;|&nbsp; {int(m_pro)}g Protein &nbsp;|&nbsp; {int(m_fib)}g Fibers
                 </span>
             </div>
             """, unsafe_allow_html=True)
@@ -560,9 +560,9 @@ with tab2:
                         st.markdown(f"**Editing: {row['Item']}**")
                         ec1, ec2, ec3, ec4 = st.columns([3, 1, 1, 1])
                         e_item = ec1.text_input("Name", row['Item'], key=f"e_name_{unique_key}")
-                        e_cal = ec2.number_input("Cals", value=int(row['Calories']), key=f"e_cal_{unique_key}")
-                        e_pro = ec3.number_input("Prot", value=float(row['Protein']), key=f"e_pro_{unique_key}")
-                        e_fib = ec4.number_input("Fib", value=float(row['Fiber']), key=f"e_fib_{unique_key}")
+                        e_cal = ec2.number_input("Calories", value=int(row['Calories']), key=f"e_cal_{unique_key}")
+                        e_pro = ec3.number_input("Protein", value=float(row['Protein']), key=f"e_pro_{unique_key}")
+                        e_fib = ec4.number_input("Fiber", value=float(row['Fiber']), key=f"e_fib_{unique_key}")
                         
                         btn1, btn2 = st.columns([1, 4])
                         if btn1.button("Save", key=f"save_{unique_key}", icon=":material/save:", width='stretch'):
@@ -584,7 +584,7 @@ with tab2:
                         <div style="margin-bottom: 2px;">
                             <span class="food-name">{row['Item']}</span>
                             <div class="food-macros">
-                                {int(row['Calories'])} Kcal &nbsp;•&nbsp; {float(row['Protein'])}g Prot &nbsp;•&nbsp; {float(row['Fiber'])}g Fib
+                                {int(row['Calories'])} Kcal &nbsp;•&nbsp; {float(row['Protein'])}g Protein &nbsp;•&nbsp; {float(row['Fiber'])}g Fibers
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
