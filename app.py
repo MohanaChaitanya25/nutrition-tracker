@@ -197,8 +197,21 @@ def get_worksheet_data(worksheet_name, headers):
 
 def append_to_worksheet(worksheet_name, row_data):
     sheet = get_google_sheet()
-    ws = sheet.worksheet(worksheet_name)
-    ws.append_row(row_data)
+    if sheet:
+        try:
+            ws = sheet.worksheet(worksheet_name)
+        except gspread.WorksheetNotFound:
+            # If it doesn't exist, create it!
+            ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
+            # If it's the Targets sheet, add headers
+            if worksheet_name == "Targets":
+                ws.append_row(["Date", "Calories", "Protein", "Fiber"])
+            # If it's the Logs sheet, add headers
+            elif worksheet_name == "Logs":
+                ws.append_row(["Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
+        
+        ws.append_row(row_data)
+        st.cache_data.clear()
 
 # --- BACKEND FUNCTIONS (REWRITTEN FOR SHEETS) ---
 
