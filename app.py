@@ -975,14 +975,14 @@ if not CURRENT_USER:
                 else:
                     st.warning("Please fill all fields")
 
-        with tab_reset:
-            with st.form("reset_form"):
-                r_email = st.text_input("Email Address")
-                r_new = st.text_input("New Password", type="password")
-                if st.form_submit_button("Update Password"):
-                    success, msg = reset_password(r_email, r_new)
-                    if success: st.success(msg)
-                    else: st.error(msg)
+    with tab_reset:
+        with st.form("reset_form"):
+            r_email = st.text_input("Email Address")
+            r_new = st.text_input("New Password", type="password")
+            if st.form_submit_button("Update Password"):
+                success, msg = reset_password(r_email, r_new)
+                if success: st.success(msg)
+                else: st.error(msg)
         
         st.stop() # Stop app here until logged in
 
