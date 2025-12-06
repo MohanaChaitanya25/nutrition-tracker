@@ -986,7 +986,14 @@ if not CURRENT_USER:
         
         st.stop() # Stop app here until logged in
 
-CURRENT_USER = user_email
+# Recover the user from session state after rerun
+if 'user_email' in st.session_state and st.session_state.user_email:
+    CURRENT_USER = st.session_state.user_email
+else:
+    # This should theoretically not happen if st.stop() works, 
+    # but it's a safe fallback to prevent NameError
+    CURRENT_USER = None
+    st.rerun()
 
 # --- ONBOARDING LOGIC ---
 def check_user_has_targets():
