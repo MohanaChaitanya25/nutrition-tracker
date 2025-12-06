@@ -890,6 +890,8 @@ def get_worksheet_df(worksheet_name, headers):
         data = ws.get_all_records()
         if not data: return pd.DataFrame(columns=headers)
         df = pd.DataFrame(data)
+        if 'Date' in df.columns:
+            df['Date'] = df['Date'].astype(str)
         for col in ['Calories', 'Protein', 'Fiber']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
