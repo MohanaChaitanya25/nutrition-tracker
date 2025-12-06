@@ -1200,43 +1200,109 @@ with tab1:
     else: 
         st.info("No data today")
 
+# --- TAB 2: DETAILED LOG ---
 with tab2:
     if not df_today.empty:
-        df_all_raw = get_worksheet_df(WORKSHEET_LOGS, ["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
-        for meal in ["Breakfast", "Lunch", "Dinner", "Snacks"]:
-            rows = df_today[df_today['Meal'] == meal]
-            if rows.empty: continue
-            st.markdown(f"### {meal}")
-            for idx, row in rows.iterrows():
-                mask = (df_all_raw['Email'] == CURRENT_USER) & (df_all_raw['Date'] == current_date_str) & (df_all_raw['Meal'] == row['Meal']) & (df_all_raw['Item'] == row['Item']) & (df_all_raw['Calories'] == row['Calories'])
-                real_indices = df_all_raw[mask].index.tolist()
-                real_idx = real_indices[0] if real_indices else -1
-                unique_key = f"{meal}_{real_idx}"
+        meal_order = ["Breakfast", "Lunch", "Dinner", "Snacks"]
+        css_classes = {"Breakfast": "bg-breakfast", "Lunch": "bg-lunch", "Dinner": "bg-dinner", "Snacks": "bg-snacks"}
+        
+        # When using Google Sheets, we need the exact row index from the full dataset for editing
+        # But here we are iterating over filtered data. 
+        # We need to map back to the original sheet index if we want to delete/edit specific rows.
+        # Strategy: Use the Date+Meal+Item combo or just filter the main DF properly.
+        # Simpler Strategy: We will just search the main log for the matching entry in update_entry.
+        # NOTE: For simplicity in this demo, 'index' here refers to the df_today index.
+        # Since update_entry logic above assumes raw sheet index, we need to find the REAL index.
+        
+        # Reload full log to get real indices
+        df_full = load_log()
+        
+        for meal in meal_order:
+            meal_rows = df_today[df_today['Meal'] == meal]
+            m_cals = meal_rows['Calories'].sum()
+            m_pro = meal_rows['Protein'].sum()
+            m_fib = meal_rows['Fiber'].sum()
+            
+            # Meal Header
+            st.markdown(f"""
+            <div class="meal-header {css_classes[meal]}">
+                <span>{meal}</span>
+                <span style="font-size:0.85em; opacity:0.95; font-weight:normal;">
+                    {int(m_cals)} Kcal &nbsp;|&nbsp; {int(m_pro)}g Protein &nbsp;|&nbsp; {int(m_fib)}g Fibers
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if meal_rows.empty:
+                st.caption("No items added.")
+                continue
 
+            for idx, row in meal_rows.iterrows():
+                # FIND REAL SHEET INDEX
+                # We match based on Date, Meal, Item, and values to find the row in the Master DF
+                # This is a bit hacky but safe for small personal datasets
+                mask = (df_full['Date'] == current_date_str) & \
+                       (df_full['Meal'] == row['Meal']) & \
+                       (df_full['Item'] == row['Item']) & \
+                       (df_full['Calories'] == row['Calories'])
+                
+                real_indices = df_full[mask].index.tolist()
+                if not real_indices:
+                    real_idx = -1
+                else:
+                    real_idx = real_indices[0] # Take the first match
+                
+                unique_key = f"{meal}_{idx}_{real_idx}"
+
+                # --- EDIT MODE ---
                 if st.session_state.edit_mode_index == unique_key:
                     with st.container():
                         st.markdown(f"**Editing: {row['Item']}**")
-                        ec1, ec2, ec3, ec4 = st.columns([3,1,1,1])
-                        ni = ec1.text_input("Name", row['Item'], key=f"n_{unique_key}")
-                        nc = ec2.number_input("Cal", value=int(row['Calories']), key=f"c_{unique_key}")
-                        np = ec3.number_input("Pro", value=float(row['Protein']), key=f"p_{unique_key}")
-                        nf = ec4.number_input("Fib", value=float(row['Fiber']), key=f"f_{unique_key}")
-                        if st.button("Save", key=f"s_{unique_key}"):
-                            update_entry(real_idx, meal, ni, nc, np, nf)
+                        ec1, ec2, ec3, ec4 = st.columns([3, 1, 1, 1])
+                        e_item = ec1.text_input("Name", row['Item'], key=f"e_name_{unique_key}")
+                        e_cal = ec2.number_input("Calories", value=int(row['Calories']), key=f"e_cal_{unique_key}")
+                        e_pro = ec3.number_input("Protein", value=float(row['Protein']), key=f"e_pro_{unique_key}")
+                        e_fib = ec4.number_input("Fiber", value=float(row['Fiber']), key=f"e_fib_{unique_key}")
+                        
+                        btn1, btn2 = st.columns([1, 4])
+                        if btn1.button("Save", key=f"save_{unique_key}", icon=":material/save:", width='stretch'):
+                            if real_idx != -1:
+                                update_entry(real_idx, meal, e_item, e_cal, e_pro, e_fib)
+                                st.session_state.edit_mode_index = None
+                                st.rerun()
+                        if btn2.button("Cancel", key=f"cancel_{unique_key}", icon=":material/close:", width='stretch'):
                             st.session_state.edit_mode_index = None
                             st.rerun()
+                    st.divider()
+                
+                # --- DISPLAY MODE (MOBILE-FRIENDLY) ---
                 else:
-                    c1, c2, c3 = st.columns([8,1,1])
-                    c1.markdown(f"**{row['Item']}** • {int(row['Calories'])} Cal • {row['Protein']}p • {row['Fiber']}f")
-                    if c2.button("✏️", key=f"e_{unique_key}"):
-                        st.session_state.edit_mode_index = unique_key
-                        st.rerun()
-                    if c3.button("🗑️", key=f"d_{unique_key}"):
-                        delete_entry(real_idx)
-                        st.rerun()
-                st.divider()
+                    col_text, col_edit, col_delete = st.columns([8, 1, 1])
+                    
+                    with col_text:
+                        st.markdown(f"""
+                        <div style="margin-bottom: 2px;">
+                            <span class="food-name">{row['Item']}</span>
+                            <div class="food-macros">
+                                {int(row['Calories'])} Kcal &nbsp;•&nbsp; {float(row['Protein'])}g Protein &nbsp;•&nbsp; {float(row['Fiber'])}g Fibers
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col_edit:
+                        if st.button("", key=f"edt_{unique_key}", icon=":material/edit:", help="Edit"):
+                            st.session_state.edit_mode_index = unique_key
+                            st.rerun()
+                    
+                    with col_delete:
+                        if st.button("", key=f"del_{unique_key}", icon=":material/delete:", help="Delete"):
+                            if real_idx != -1:
+                                delete_entry(real_idx)
+                                st.rerun()
+                    
+                    st.markdown("<hr style='margin: 5px 0px 10px 0px; opacity: 0.3;'>", unsafe_allow_html=True)
     else:
-        st.info("No entries for today. Add your first meal above!")
+        st.info("No logs today.")
 
 # --- TAB 3: HISTORY & TRENDS ---
 with tab3:
