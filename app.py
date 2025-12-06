@@ -867,7 +867,6 @@ def verify_login(email, password):
     """Checks the Users sheet for a matching Email and Hashed Password"""
     # Reuse your existing get_worksheet_df function
     df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
-    
     if df_users.empty: return False
     
     # Filter for the email entered
@@ -877,8 +876,23 @@ def verify_login(email, password):
     # Check if the stored hash matches the input hash
     stored_hash = str(user_row.iloc[0]['Password']).strip()
     input_hash = hash_password(password)
+
+    # Support both hashed (new) and plain text (old/manual) passwords
+    if stored_hash == input_hash: return True
+    if stored_hash == password: return True 
+    return False
+
+
+def register_user(email, password, name):
+    """Creates a new user row"""
+    df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+    if not df_users.empty and email.strip() in df_users['Email'].values:
+        return False, "Email already registered!"
     
-    return stored_hash == input_hash
+    new_hash = hash_password(password)
+    # Append to Users Sheet
+    append_to_worksheet(WORKSHEET_USERS, [email.strip(), new_hash, name.strip()])
+    return True, "Account created! Please login."
 
 def reset_password(email, new_password):
     """Updates the password in the Google Sheet"""
@@ -912,26 +926,40 @@ if not CURRENT_USER:
     cloud_user = st.context.headers.get("X-Streamlit-User-Email")
     if cloud_user:
         CURRENT_USER = cloud_user
-    else:
-        # Show Login Form
-        st.info("👋 Welcome! Please log in.")
         
-        tab_login, tab_reset = st.tabs(["🔐 Login", "🔄 Reset Password"])
+if not CURRENT_USER:    
+    # Show Login Form
+    st.info("👋 Welcome! Please log in.")
         
-        with tab_login:
-            with st.form("login_form"):
-                email_in = st.text_input("Email")
-                pass_in = st.text_input("Password", type="password")
-                remember = st.checkbox("Keep me logged in")
-                
-                if st.form_submit_button("Login", type="primary"):
-                    if verify_login(email_in, pass_in):
-                        if remember:
-                            st.query_params["user"] = email_in.strip()
-                        CURRENT_USER = email_in.strip()
-                        st.rerun() # Refresh to load dashboard
-                    else:
-                        st.error("Invalid Email or Password.")
+    tab_login, tab_reset = st.tabs(["🔐 Login", "🔄 Reset Password"])
+        
+    with tab_login:
+        with st.form("login_form"):
+            email_in = st.text_input("Email")
+            pass_in = st.text_input("Password", type="password")
+            remember = st.checkbox("Keep me logged in")
+            
+            if st.form_submit_button("Login", type="primary"):
+                if verify_login(email_in, pass_in):
+                    if remember:
+                        st.query_params["user"] = email_in.strip()
+                    CURRENT_USER = email_in.strip()
+                    st.rerun() # Refresh to load dashboard
+                else:
+                    st.error("Invalid Email or Password.")
+
+    with tab_reg:
+        with st.form("reg_form"):
+            new_email = st.text_input("New Email")
+            new_name = st.text_input("Your Name")
+            new_pass = st.text_input("New Password", type="password")
+            if st.form_submit_button("Create Account"):
+                if new_email and new_pass:
+                    success, msg = register_user(new_email, new_pass, new_name)
+                    if success: st.success(msg)
+                    else: st.error(msg)
+                else:
+                    st.warning("Please fill all fields")
 
         with tab_reset:
             with st.form("reset_form"):
