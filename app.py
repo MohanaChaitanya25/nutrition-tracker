@@ -743,11 +743,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import hashlib
 
 # --- CONFIGURATION ---
 SHEET_NAME = "ProNutritionDB"
 WORKSHEET_LOGS = "Logs"
 WORKSHEET_TARGETS = "Targets"
+WORKSHEET_USERS = "Users"
 APP_NAME = "🥗 Pro Nutrition Tracker"
 
 # Global Defaults
@@ -810,65 +812,52 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# st.markdown("""
-#     <style>
-#     .block-container { padding-top: 1rem; padding-bottom: 5rem; }
-#     .app-header { text-align: center; font-size: 2.5rem; font-weight: 800; color: #667eea; margin-bottom: 20px; }
-#     .metrics-container { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-#     .metrics-container::-webkit-scrollbar { display: none; }
-#     .metric-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-width: 100%; flex-shrink: 0; padding: 20px 16px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); text-align: center; color: white; position: relative; overflow: hidden; }
-#     .metric-card.cal { background: linear-gradient(135deg, #FF9800, #FF6F00); }
-#     .metric-card.pro { background: linear-gradient(135deg, #66BB6A, #388E3C); }
-#     .metric-card.fib { background: linear-gradient(135deg, #42A5F5, #1976D2); }
-#     .metric-emoji { font-size: 2rem; margin-bottom: 8px; display: block; }
-#     .metric-label { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; margin-bottom: 8px; }
-#     .metric-value { font-size: 2.2rem; font-weight: 900; margin: 8px 0; line-height: 1; }
-#     .metric-delta { font-size: 1rem; opacity: 0.95; font-weight: 600; margin-top: 6px; }
-#     .input-container { background-color: #f0f2f6; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-#     .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; width: 100%; }
-#     .big-btn button { padding: 0.5rem 1rem !important; font-size: 1.1rem !important; }
-#     .meal-header { padding: 12px 15px; border-radius: 8px; color: white; font-weight: bold; margin-top: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 1.0rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-family: 'Segoe UI', sans-serif; }
-#     .bg-breakfast { background: linear-gradient(90deg, #FF9966, #FF5E62); }
-#     .bg-lunch { background: linear-gradient(90deg, #56ab2f, #a8e063); }
-#     .bg-dinner { background: linear-gradient(90deg, #2193b0, #6dd5ed); }
-#     .bg-snacks { background: linear-gradient(90deg, #DA4453, #89216B); }
-#     </style>
-# """, unsafe_allow_html=True)
-
 # --- APP HEADER ---
 st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
-# --- 🔒 SECURITY: MANUAL LOGIN FALLBACK ---
-# 1. Try to get User from Cloud Headers
-user_email = st.context.headers.get("X-Streamlit-User-Email")
+# 1. Check URL for Persistence (Keeps user logged in on refresh)
+if "user" in st.query_params:
+    CURRENT_USER = st.query_params["user"]
+else:
+    CURRENT_USER = None
 
-if not user_email:
-    try:
-        user_email = st.experimental_user.email
-    except:
-        pass
-
-# 2. Check if they Manually Logged in previously
-if 'manual_user_email' not in st.session_state:
-    st.session_state.manual_user_email = None
-
-if not user_email:
-    if st.session_state.manual_user_email:
-        # Restore the manual session
-        user_email = st.session_state.manual_user_email
+# 2. If no user in URL, Show Login Screen
+if not CURRENT_USER:
+    # Optional: Try getting cloud header first (for private app support)
+    cloud_user = st.context.headers.get("X-Streamlit-User-Email")
+    if cloud_user:
+        CURRENT_USER = cloud_user
     else:
-        # SHOW LOGIN BOX instead of crashing
-        st.warning("⚠️ Could not detect Google Login automatically.")
-        with st.form("manual_login"):
-            st.markdown("### Please enter your email to continue:")
-            email_in = st.text_input("Email Address")
-            if st.form_submit_button("Login"):
-                if "@" in email_in:
-                    st.session_state.manual_user_email = email_in.strip()
-                    st.rerun()
-                else:
-                    st.error("Enter a valid email")
-        st.stop() # Only stop here, while waiting for input
+        # Show Login Form
+        st.info("👋 Welcome! Please log in.")
+        
+        tab_login, tab_reset = st.tabs(["🔐 Login", "🔄 Reset Password"])
+        
+        with tab_login:
+            with st.form("login_form"):
+                email_in = st.text_input("Email")
+                pass_in = st.text_input("Password", type="password")
+                remember = st.checkbox("Keep me logged in")
+                
+                if st.form_submit_button("Login", type="primary"):
+                    if verify_login(email_in, pass_in):
+                        if remember:
+                            st.query_params["user"] = email_in.strip()
+                        CURRENT_USER = email_in.strip()
+                        st.rerun() # Refresh to load dashboard
+                    else:
+                        st.error("Invalid Email or Password.")
+
+        with tab_reset:
+            with st.form("reset_form"):
+                r_email = st.text_input("Email Address")
+                r_new = st.text_input("New Password", type="password")
+                if st.form_submit_button("Update Password"):
+                    success, msg = reset_password(r_email, r_new)
+                    if success: st.success(msg)
+                    else: st.error(msg)
+        
+        st.stop() # Stop app here until logged in
 
 CURRENT_USER = user_email
 
@@ -973,6 +962,49 @@ if not st.session_state.onboarding_complete:
 # ==========================================
 # 🚀 SCREEN 2: MAIN DASHBOARD
 # ==========================================
+
+# --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
+
+def hash_password(password):
+    """Converts a password into a secure hash"""
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def verify_login(email, password):
+    """Checks the Users sheet for a matching Email and Hashed Password"""
+    # Reuse your existing get_worksheet_df function
+    df_users = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+    
+    if df_users.empty: return False
+    
+    # Filter for the email entered
+    user_row = df_users[df_users['Email'] == email.strip()]
+    if user_row.empty: return False
+    
+    # Check if the stored hash matches the input hash
+    stored_hash = str(user_row.iloc[0]['Password']).strip()
+    input_hash = hash_password(password)
+    
+    return stored_hash == input_hash
+
+def reset_password(email, new_password):
+    """Updates the password in the Google Sheet"""
+    sheet = get_google_sheet()
+    if not sheet: return False, "Database Error"
+    
+    try:
+        ws = sheet.worksheet(WORKSHEET_USERS)
+    except gspread.WorksheetNotFound:
+        return False, "Users sheet not found"
+        
+    # Find the row number for this email
+    cell = ws.find(email.strip())
+    if not cell: return False, "Email not found in database!"
+    
+    # Update Column 2 (Password) with new Hash
+    new_hash = hash_password(new_password)
+    ws.update_cell(cell.row, 2, new_hash)
+    st.cache_data.clear()
+    return True, "Password updated successfully!"
 
 # --- DATA HELPERS ---
 def load_log():
