@@ -60,16 +60,16 @@ st.markdown("""
         .metrics-container { gap: 10px; padding: 8px 0; }
         .metric-card { min-width: 100%; padding: 18px 14px; border-radius: 14px; }
         .metric-emoji { font-size: 1.6rem; margin-bottom: 6px; }
-        .metric-value { font-size: 1.7rem; }
+        .metric-value { font-size: 1.6rem; }
         .metric-label { font-size: 1.5rem; }
-        .metric-delta { font-size: 0.8rem; }
+        .metric-delta { font-size: 1rem; }
         .food-name { font-size: 0.95rem; }
         .food-macros { font-size: 0.75rem; }
         .stButton button { padding: 0.3rem 0.4rem !important; min-width: 32px !important; height: 32px !important; font-size: 0.75rem !important; }
         .meal-header { flex-direction: column; align-items: flex-start; gap: 5px; font-size: 0.9rem; padding: 10px 12px; }
         div[data-testid="stMetricValue"] div { font-size: 1.5rem !important; }
     }
-    @media (max-width: 600px) { h1 { margin-top: 12px; font-size: 1.8rem !important; } .app-header { font-size: 2rem; } }
+    @media (max-width: 600px) { h1 { margin-top: 12px; font-size: 1.6rem !important; } .app-header { font-size: 1.8rem; } }
     @media (max-width: 480px) { .metric-card { min-width: 100%; padding: 16px 12px; } .metric-emoji { font-size: 2rem; } .metric-value { font-size: 1.6rem; } .metric-label { font-size: 1.3rem; } }
     </style>
 """, unsafe_allow_html=True)
