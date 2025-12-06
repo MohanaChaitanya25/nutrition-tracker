@@ -815,7 +815,21 @@ st.markdown("""
 # --- APP HEADER ---
 st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
-# --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
+
+
+# --- GOOGLE SHEETS CONNECTION ---
+@st.cache_resource
+def get_google_sheet():
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    try:
+        sheet = client.open(SHEET_NAME)
+        return sheet
+    except Exception as e:
+        st.error(f"Connection Error: {e}")
+        return None
 
 def get_worksheet_df(worksheet_name, headers):
     sheet = get_google_sheet()
@@ -844,6 +858,7 @@ def get_worksheet_df(worksheet_name, headers):
         ws.append_row(headers)
         return pd.DataFrame(columns=headers)
 
+# --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
 def hash_password(password):
     """Converts a password into a secure hash"""
     return hashlib.sha256(str.encode(password)).hexdigest()
@@ -930,20 +945,6 @@ if not CURRENT_USER:
         st.stop() # Stop app here until logged in
 
 CURRENT_USER = user_email
-
-# --- GOOGLE SHEETS CONNECTION ---
-@st.cache_resource
-def get_google_sheet():
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    try:
-        sheet = client.open(SHEET_NAME)
-        return sheet
-    except Exception as e:
-        st.error(f"Connection Error: {e}")
-        return None
 
 def append_to_worksheet(worksheet_name, row_data):
     sheet = get_google_sheet()
