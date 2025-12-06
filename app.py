@@ -858,6 +858,20 @@ def get_worksheet_df(worksheet_name, headers):
         ws.append_row(headers)
         return pd.DataFrame(columns=headers)
 
+def append_to_worksheet(worksheet_name, row_data):
+    sheet = get_google_sheet()
+    if sheet:
+        try:
+            ws = sheet.worksheet(worksheet_name)
+        except gspread.WorksheetNotFound:
+            ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
+            if worksheet_name == WORKSHEET_LOGS:
+                ws.append_row(["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
+            elif worksheet_name == WORKSHEET_TARGETS:
+                ws.append_row(["Email", "Date", "Calories", "Protein", "Fiber"])
+        ws.append_row(row_data)
+        st.cache_data.clear()
+
 # --- 🔐 SECURITY & PASSWORD FUNCTIONS ---
 def hash_password(password):
     """Converts a password into a secure hash"""
@@ -973,20 +987,6 @@ if not CURRENT_USER:
         st.stop() # Stop app here until logged in
 
 CURRENT_USER = user_email
-
-def append_to_worksheet(worksheet_name, row_data):
-    sheet = get_google_sheet()
-    if sheet:
-        try:
-            ws = sheet.worksheet(worksheet_name)
-        except gspread.WorksheetNotFound:
-            ws = sheet.add_worksheet(title=worksheet_name, rows=1000, cols=10)
-            if worksheet_name == WORKSHEET_LOGS:
-                ws.append_row(["Email", "Date", "Meal", "Item", "Calories", "Protein", "Fiber"])
-            elif worksheet_name == WORKSHEET_TARGETS:
-                ws.append_row(["Email", "Date", "Calories", "Protein", "Fiber"])
-        ws.append_row(row_data)
-        st.cache_data.clear()
 
 # --- ONBOARDING LOGIC ---
 def check_user_has_targets():
