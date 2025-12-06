@@ -1014,13 +1014,13 @@ if not st.session_state.onboarding_complete:
         c_save, c_skip = st.columns([2, 1])
         
         with c_save:
-            if st.button("🚀 Save & Start", type="primary", use_container_width=True):
+            if st.button("🚀 Save & Start", type="primary", width='stretch'):
                 save_initial_targets(in_cal, in_pro, in_fib)
                 st.session_state.onboarding_complete = True
                 st.rerun()
 
         with c_skip:
-            if st.button("Skip for now", use_container_width=True):
+            if st.button("Skip for now", width='stretch'):
                 save_initial_targets(DEFAULT_CALS, DEFAULT_PRO, DEFAULT_FIB)
                 st.session_state.onboarding_complete = True
                 st.rerun()
@@ -1108,7 +1108,7 @@ with st.sidebar:
         else:
             st.write(f"👤 **{CURRENT_USER}**")
     
-    if st.button("Logout", use_container_width=True):
+    if st.button("Logout", width='stretch'):
         st.session_state.user_email = None
         if "user" in st.query_params:
             del st.query_params["user"]
@@ -1128,7 +1128,7 @@ with st.sidebar:
         st.session_state.edit_mode_index = None
         st.rerun()
     
-    if st.button("Return to Today", use_container_width=True):
+    if st.button("Return to Today", width='stretch'):
         st.session_state.selected_date = datetime.now().date()
         st.session_state.edit_mode_index = None
         st.rerun()
@@ -1140,7 +1140,7 @@ with st.sidebar:
             nc = st.number_input("Cals", value=int(curr_c), step=50)
             np = st.number_input("Prot", value=int(curr_p), step=5)
             nf = st.number_input("Fib", value=int(curr_f), step=5)
-            if st.form_submit_button("Save", use_container_width=True):
+            if st.form_submit_button("Save", width='stretch'):
                 save_smart_target(st.session_state.selected_date, nc, np, nf)
                 st.rerun()
 
@@ -1193,10 +1193,10 @@ with tab1:
         with c1:
             fig = px.pie(df_today, values='Calories', names='Meal', hole=0.5, color='Meal', 
                         color_discrete_map={'Breakfast':'#FF9966', 'Lunch':'#56ab2f', 'Dinner':'#2193b0', 'Snacks':'#DA4453'})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         with c2:
             chart = df_today.groupby('Meal')[['Protein','Fiber']].sum().reset_index().melt('Meal')
-            st.plotly_chart(px.bar(chart, x='Meal', y='value', color='variable', barmode='group'), use_container_width=True)
+            st.plotly_chart(px.bar(chart, x='Meal', y='value', color='variable', barmode='group'), width='stretch')
     else: 
         st.info("No data today")
 
@@ -1238,68 +1238,152 @@ with tab2:
     else:
         st.info("No entries for today. Add your first meal above!")
 
+# --- TAB 3: HISTORY & TRENDS ---
 with tab3:
-    st.subheader("📈 Statistics")
+    st.subheader("📈 Statistics & Trends")
+    
     avg_week, avg_month, avg_all, daily_totals = calculate_averages(df_log)
+    
     if daily_totals is not None and not daily_totals.empty:
-        c1, c2, c3 = st.columns(3)
-        def fmt(s): return f"{int(s['Calories'])} Cal" if not s.empty else "0 Cal"
-        with c1: st.metric("7-Day Avg", fmt(avg_week))
-        with c2: st.metric("30-Day Avg", fmt(avg_month))
-        with c3: st.metric("All-Time Avg", fmt(avg_all))
-        
+        current_year = datetime.now().year
+        this_year_data = daily_totals[daily_totals['Date'].dt.year == current_year]
+        if not this_year_data.empty:
+            avg_curr_year = this_year_data[['Calories', 'Protein', 'Fiber']].mean()
+        else:
+            avg_curr_year = pd.Series([0, 0, 0], index=['Calories', 'Protein', 'Fiber'])
+
+        def get_vals(series):
+            if series is None or series.empty: return 0, 0, 0
+            return int(series['Calories']), int(series['Protein']), int(series['Fiber'])
+
+        w_c, w_p, w_f = get_vals(avg_week)
+        m_c, m_p, m_f = get_vals(avg_month)
+        y_c, y_p, y_f = get_vals(avg_curr_year)
+        o_c, o_p, o_f = get_vals(avg_all)
+
+        ac1, ac2, ac3, ac4 = st.columns(4)
+        with ac1: st.metric("7-Day Avg", f"{w_c} Kcal", f"{w_p}p / {w_f}f")
+        with ac2: st.metric("30-Day Avg", f"{m_c} Kcal", f"{m_p}p / {m_f}f")
+        with ac3: st.metric(f"{current_year} Avg", f"{y_c} Kcal", f"{y_p}p / {y_f}f")
+        with ac4: st.metric("All-Time Avg", f"{o_c} Kcal", f"{o_p}p / {o_f}f")
+            
         st.divider()
-        st.subheader("🗓️ Calendar")
-        col_prev, col_m, col_y, col_next = st.columns([1, 2, 2, 1])
-        def next_m():
-            if st.session_state.cal_month == 12: 
+
+        # Monthly Calendar View
+        st.subheader("🗓️ Monthly Calendar")
+
+        MIN_YEAR = 2023
+        MAX_YEAR = 2029
+
+        def next_month():
+            if st.session_state.cal_year == MAX_YEAR and st.session_state.cal_month == 12:
+                return
+            if st.session_state.cal_month == 12:
                 st.session_state.cal_month = 1
                 st.session_state.cal_year += 1
-            else: 
+            else:
                 st.session_state.cal_month += 1
-        def prev_m():
-            if st.session_state.cal_month == 1: 
+        
+        def prev_month():
+            if st.session_state.cal_year == MIN_YEAR and st.session_state.cal_month == 1:
+                return
+            if st.session_state.cal_month == 1:
                 st.session_state.cal_month = 12
                 st.session_state.cal_year -= 1
-            else: 
+            else:
                 st.session_state.cal_month -= 1
-        with col_prev: st.button("◀", on_click=prev_m, key="cal_prev")
-        with col_m: st.write(f"**{calendar.month_name[st.session_state.cal_month]}**")
-        with col_y: st.write(f"**{st.session_state.cal_year}**")
-        with col_next: st.button("▶", on_click=next_m, key="cal_next")
 
-        sel_year, sel_month = st.session_state.cal_year, st.session_state.cal_month
+        col_prev, col_m, col_y, col_next = st.columns([1, 2, 2, 1])
+        
+        with col_prev:
+            st.button("◀", on_click=prev_month, key="btn_prev_m", width='stretch')
+        with col_m:
+            selected_month_val = st.selectbox(
+                "Month", 
+                range(1, 13), 
+                index=st.session_state.cal_month - 1, 
+                format_func=lambda x: calendar.month_name[x],
+                label_visibility="collapsed"
+            )
+            if selected_month_val != st.session_state.cal_month:
+                st.session_state.cal_month = selected_month_val
+                st.rerun()
+        with col_y:
+            selected_year_val = st.selectbox(
+                "Year", 
+                range(MIN_YEAR, MAX_YEAR + 1), 
+                index=st.session_state.cal_year - MIN_YEAR, 
+                label_visibility="collapsed"
+            )
+            if selected_year_val != st.session_state.cal_year:
+                st.session_state.cal_year = selected_year_val
+                st.rerun()
+        with col_next:
+            st.button("▶", on_click=next_month, key="btn_next_m", width='stretch')
+
+        # Draw Calendar
+        sel_year = st.session_state.cal_year
+        sel_month = st.session_state.cal_month
+        
         cal_obj = calendar.Calendar(firstweekday=0)
         month_days = cal_obj.monthdayscalendar(sel_year, sel_month)
+        
         x_vals, y_vals, z_vals, text_vals = [], [], [], []
+        hover_cals, hover_pro, hover_fib = [], [], []
+        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        
         mask = (daily_totals['Date'].dt.year == sel_year) & (daily_totals['Date'].dt.month == sel_month)
         month_data = daily_totals[mask].set_index('Date')
-        
+
         for week_idx, week in enumerate(month_days):
             for day_idx, day_num in enumerate(week):
-                x_vals.append(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][day_idx])
+                x_vals.append(day_names[day_idx])
                 y_vals.append(f"Week {week_idx+1}")
+                
                 if day_num == 0:
                     z_vals.append(None)
                     text_vals.append("")
+                    hover_cals.append("")
+                    hover_pro.append("")
+                    hover_fib.append("")
                 else:
                     date_key = pd.Timestamp(year=sel_year, month=sel_month, day=day_num)
                     text_vals.append(str(day_num))
-                    if date_key in month_data.index: 
-                        z_vals.append(month_data.loc[date_key]['Calories'])
-                    else: 
-                        z_vals.append(0)
+                    
+                    if date_key in month_data.index:
+                        row = month_data.loc[date_key]
+                        c, p, f = row['Calories'], row['Protein'], row['Fiber']
+                        z_vals.append(c) 
+                        hover_cals.append(int(c))
+                        hover_pro.append(int(p))
+                        hover_fib.append(int(f))
+                    else:
+                        z_vals.append(0) 
+                        hover_cals.append(0)
+                        hover_pro.append(0)
+                        hover_fib.append(0)
 
-        fig = go.Figure(data=go.Heatmap(
-            x=x_vals, y=y_vals, z=z_vals, text=text_vals, texttemplate="%{text}",
-            colorscale=[[0, '#f8f9fa'], [1, '#319795']], showscale=False
+        fig_cal = go.Figure(data=go.Heatmap(
+            x=x_vals, y=y_vals, z=z_vals,
+            text=text_vals, texttemplate="%{text}", 
+            textfont={"size": 14, "color": "gray"},
+            xgap=3, ygap=3,
+            colorscale=[[0, '#f8f9fa'], [0.01, '#e6fffa'], [1, '#319795']], 
+            showscale=False,
+            hovertemplate="<b>Date: %{x}, Day %{text}</b><br><br>🔥 Calories: %{customdata[0]}<br>💪 Protein: %{customdata[1]}g<br>🌾 Fiber: %{customdata[2]}g<extra></extra>",
+            customdata=list(zip(hover_cals, hover_pro, hover_fib))
         ))
-        fig.update_layout(
-            height=350, 
-            yaxis=dict(autorange="reversed", fixedrange=True), 
-            xaxis=dict(side="top", fixedrange=True), 
-            margin=dict(t=30,b=0,l=0,r=0)
+        
+        fig_cal.update_layout(
+            height=350,
+            margin=dict(l=0, r=0, t=30, b=0),
+            yaxis=dict(showgrid=False, zeroline=False, autorange="reversed", fixedrange=True), 
+            xaxis=dict(showgrid=False, zeroline=False, side="top", fixedrange=True), 
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Segoe UI")
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_cal, width='stretch')
+
     else:
-        st.info("Start logging to see history!")
+        st.info("No historical data available yet. Start logging meals to see your stats!")
