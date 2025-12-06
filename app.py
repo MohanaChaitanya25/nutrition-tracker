@@ -1071,7 +1071,14 @@ if 'cal_year' not in st.session_state: st.session_state.cal_year = datetime.now(
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.write(f"👤 **{CURRENT_USER}**")
+    users_df = get_worksheet_df(WORKSHEET_USERS, ["Email", "Password", "Name"])
+    if not users_df.empty:
+        user_info = users_df[users_df['Email'] == CURRENT_USER]
+        if not user_info.empty:
+            real_name = user_info.iloc[0]['Name']
+            st.write(f"👤 **{real_name}**")
+        else:
+            st.write(f"👤 **{CURRENT_USER}**")
     if st.button("Logout"):
         st.session_state.manual_user_email = None
         st.rerun()
