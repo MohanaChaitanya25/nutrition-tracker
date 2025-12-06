@@ -19,23 +19,20 @@ DEFAULT_CALS = 2000
 DEFAULT_PRO = 150
 DEFAULT_FIB = 30
 
-st.set_page_config(page_title=APP_NAME, page_icon="🥗", layout="wide")
+# Page Config
+st.set_page_config(page_title="Pro Nutrition Tracker", page_icon="🥗", layout="wide")
 
 # --- CSS STYLING ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem; padding-bottom: 5rem; }
-    .app-header { 
-        text-align: center; 
-        font-size: 2.5rem; 
-        font-weight: 800; 
-        color: #667eea; 
-        margin-bottom: 20px;
-        padding-top: 20px;
-    }
+    .app-header { text-align: center; font-size: 2.5rem; font-weight: 800; color: #667eea; margin-bottom: 20px; padding-top: 20px; }
+    
+    /* METRICS & CARDS */
     .metrics-container { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .metrics-container::-webkit-scrollbar { display: none; }
     .metric-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-width: 100%; flex-shrink: 0; padding: 20px 16px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); text-align: center; color: white; position: relative; overflow: hidden; }
+    .metric-card::before { content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none; }
     .metric-card.cal { background: linear-gradient(135deg, #FF9800, #FF6F00); }
     .metric-card.pro { background: linear-gradient(135deg, #66BB6A, #388E3C); }
     .metric-card.fib { background: linear-gradient(135deg, #42A5F5, #1976D2); }
@@ -43,14 +40,36 @@ st.markdown("""
     .metric-label { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; margin-bottom: 8px; }
     .metric-value { font-size: 2.2rem; font-weight: 900; margin: 8px 0; line-height: 1; }
     .metric-delta { font-size: 1rem; opacity: 0.95; font-weight: 600; margin-top: 6px; }
-    .input-container { background-color: #f0f2f6; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-    .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; width: 100%; }
-    .big-btn button { padding: 0.5rem 1rem !important; font-size: 1.1rem !important; }
+    
+    /* MEALS */
     .meal-header { padding: 12px 15px; border-radius: 8px; color: white; font-weight: bold; margin-top: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 1.0rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-family: 'Segoe UI', sans-serif; }
     .bg-breakfast { background: linear-gradient(90deg, #FF9966, #FF5E62); }
     .bg-lunch { background: linear-gradient(90deg, #56ab2f, #a8e063); }
     .bg-dinner { background: linear-gradient(90deg, #2193b0, #6dd5ed); }
     .bg-snacks { background: linear-gradient(90deg, #DA4453, #89216B); }
+    
+    /* FOOD CARDS & BUTTONS */
+    .food-card { background-color: white; border: 1px solid #eee; border-left: 5px solid #ddd; padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; }
+    .food-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 4px; display: block; }
+    .food-macros { font-size: 0.85rem; color: #7f8c8d; font-weight: 500; }
+    .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+    
+    /* MOBILE RESPONSIVE */
+    @media (max-width: 768px) {
+        .metrics-container { gap: 10px; padding: 8px 0; }
+        .metric-card { min-width: 100%; padding: 18px 14px; border-radius: 14px; }
+        .metric-emoji { font-size: 1.6rem; margin-bottom: 6px; }
+        .metric-value { font-size: 1.7rem; }
+        .metric-label { font-size: 1.5rem; }
+        .metric-delta { font-size: 0.8rem; }
+        .food-name { font-size: 0.95rem; }
+        .food-macros { font-size: 0.75rem; }
+        .stButton button { padding: 0.3rem 0.4rem !important; min-width: 32px !important; height: 32px !important; font-size: 0.75rem !important; }
+        .meal-header { flex-direction: column; align-items: flex-start; gap: 5px; font-size: 0.9rem; padding: 10px 12px; }
+        div[data-testid="stMetricValue"] div { font-size: 1.5rem !important; }
+    }
+    @media (max-width: 600px) { h1 { margin-top: 12px; font-size: 2rem !important; } }
+    @media (max-width: 480px) { .metric-card { min-width: 100%; padding: 16px 12px; } .metric-emoji { font-size: 2rem; } .metric-value { font-size: 1.6rem; } .metric-label { font-size: 1.3rem; } }
     </style>
 """, unsafe_allow_html=True)
 
