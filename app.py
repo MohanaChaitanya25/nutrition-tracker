@@ -931,7 +931,7 @@ if not CURRENT_USER:
     # Show Login Form
     st.info("👋 Welcome! Please log in.")
         
-    tab_login, tab_reset = st.tabs(["🔐 Login", "🔄 Reset Password"])
+    tab_login, tab_reg, tab_reset = st.tabs(["🔐 Login", "📝 Register", "🔄 Reset Password"])
         
     with tab_login:
         with st.form("login_form"):
