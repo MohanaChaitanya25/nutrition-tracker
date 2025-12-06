@@ -77,7 +77,8 @@ st.markdown("""
 # --- APP HEADER ---
 st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
-# --- 🔒 SECURITY: GET CURRENT USER ---
+# --- 🔒 SECURITY: STRICT USER IDENTIFICATION ---
+# 1. Try to get the real user from Streamlit Cloud
 user_email = st.context.headers.get("X-Streamlit-User-Email")
 
 if not user_email:
@@ -86,12 +87,48 @@ if not user_email:
     except:
         pass
 
-# FALLBACK: If user is not found, DO NOT STOP. Use a setup email.
+# 2. NO FALLBACKS: If user is not found, we use Session State (Manual Login)
+if 'manual_user_email' not in st.session_state:
+    st.session_state.manual_user_email = None
+
 if not user_email:
-    user_email = "setup_admin@example.com"
-    # st.warning("⚠️ No User ID found. Using 'setup_admin' to initialize app.")
+    # If no Cloud Email, check if they manually logged in
+    if st.session_state.manual_user_email:
+        user_email = st.session_state.manual_user_email
+    else:
+        # SHOW LOGIN SCREEN
+        st.warning("⚠️ Could not detect Google Login automatically.")
+        with st.form("manual_login"):
+            st.markdown("### Please enter your email to continue:")
+            email_in = st.text_input("Email Address")
+            if st.form_submit_button("Login"):
+                if "@" in email_in:
+                    st.session_state.manual_user_email = email_in
+                    st.rerun()
+                else:
+                    st.error("Enter a valid email")
+        st.stop()
 
 CURRENT_USER = user_email
+
+# --- APP HEADER ---
+# st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
+
+# # --- 🔒 SECURITY: GET CURRENT USER ---
+# user_email = st.context.headers.get("X-Streamlit-User-Email")
+
+# if not user_email:
+#     try:
+#         user_email = st.experimental_user.email
+#     except:
+#         pass
+
+# # FALLBACK: If user is not found, DO NOT STOP. Use a setup email.
+# if not user_email:
+#     user_email = "setup_admin@example.com"
+#     # st.warning("⚠️ No User ID found. Using 'setup_admin' to initialize app.")
+
+# CURRENT_USER = user_email
 
 
 # --- GOOGLE SHEETS CONNECTION FUNCTIONS ---
