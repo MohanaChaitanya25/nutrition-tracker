@@ -25,6 +25,22 @@ st.set_page_config(page_title=APP_NAME, page_icon="🥗", layout="wide")
 # --- CSS STYLING ---
 st.markdown("""
     <style>
+    /* 1. HIDE ADMIN ELEMENTS (But keep Sidebar Toggle!) */
+    
+    /* Hides the "Manage App" / "Deploy" button */
+    .stAppDeployButton, .stDeployButton {display: none !important;}
+    
+    /* Hides the "Three Dots" Menu in the top right */
+    #MainMenu {visibility: hidden !important;}
+    
+    /* Hides the "Made with Streamlit" Footer */
+    footer {visibility: hidden !important;}
+    
+    /* Hides the colored rainbow line at the top */
+    [data-testid="stDecoration"] {display: none !important;}
+    
+    /* NOTE: We removed the rule hiding 'stHeader' so the sidebar toggle remains visible */
+    
     .block-container { padding-top: 1rem; padding-bottom: 5rem; }
     .app-header { text-align: center; font-size: 2.5rem; font-weight: 800; color: #667eea; margin-bottom: 20px; padding-top: 20px; }
     
