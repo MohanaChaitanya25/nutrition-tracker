@@ -8,6 +8,13 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import hashlib
 
+# --- NEW IMPORTS FOR LOCATION ---
+import geocoder
+from timezonefinder import TimezoneFinder
+import pytz
+
+
+
 # --- CONFIGURATION ---
 SHEET_NAME = "ProNutritionDB"
 WORKSHEET_LOGS = "Logs"
@@ -91,6 +98,40 @@ st.markdown("""
 
 # --- APP HEADER ---
 st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
+
+# --- TIMEZONE DETECTION HELPER ---
+def get_user_local_now():
+    """Detects user location via IP and returns their local datetime object."""
+    try:
+        # Only check once per session to speed up app
+        if 'user_local_now_offset' not in st.session_state:
+            g = geocoder.ip('me') # Get location based on IP
+            if g.latlng:
+                latitude, longitude = g.latlng
+                tf = TimezoneFinder()
+                user_timezone_str = tf.timezone_at(lng=longitude, lat=latitude)
+                if user_timezone_str:
+                    target_tz = pytz.timezone(user_timezone_str)
+                    st.session_state.user_timezone_name = user_timezone_str
+                    # Calculate offset from server time
+                    utc_now = datetime.now(pytz.utc)
+                    local_now = utc_now.astimezone(target_tz)
+                    # We return the direct time object
+                    return local_now
+        
+        # If we already found it, or if detection failed, return calculated time or server time
+        if 'user_timezone_name' in st.session_state:
+             target_tz = pytz.timezone(st.session_state.user_timezone_name)
+             return datetime.now(pytz.utc).astimezone(target_tz)
+
+    except Exception as e:
+        print(f"Timezone detection error: {e}")
+    
+    # Fallback to server time if detection fails
+    return datetime.now()
+
+# Define a global variable for "Now" to be used throughout the script
+USER_NOW = get_user_local_now()
 
 # --- GOOGLE SHEETS CONNECTION ---
 @st.cache_resource
@@ -270,7 +311,7 @@ def check_user_has_targets():
     return not df[df['Email'] == CURRENT_USER].empty
 
 def save_initial_targets(cals, pro, fib):
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = USER_NOW.strftime("%Y-%m-%d") 
     append_to_worksheet(WORKSHEET_TARGETS, [CURRENT_USER, today, int(cals), int(pro), int(fib)])
 
 if 'onboarding_complete' not in st.session_state:
@@ -356,7 +397,7 @@ def calculate_averages(df):
     if df.empty: return None, None, None, None
     daily = df.groupby('Date')[['Calories', 'Protein', 'Fiber']].sum().reset_index()
     daily['Date'] = pd.to_datetime(daily['Date'])
-    today = pd.to_datetime(datetime.now().date())
+    today = pd.to_datetime(USER_NOW.date())
     
     start_week = today - timedelta(days=7)
     weekly = daily[(daily['Date'] >= start_week) & (daily['Date'] <= today)]
@@ -371,13 +412,13 @@ def calculate_averages(df):
 
 # --- STATE ---
 if 'selected_date' not in st.session_state: 
-    st.session_state.selected_date = datetime.now().date()
+    st.session_state.selected_date = USER.date()
 if 'edit_mode_index' not in st.session_state: 
     st.session_state.edit_mode_index = None
 if 'cal_month' not in st.session_state: 
-    st.session_state.cal_month = datetime.now().month
+    st.session_state.cal_month = USER.month
 if 'cal_year' not in st.session_state: 
-    st.session_state.cal_year = datetime.now().year
+    st.session_state.cal_year = USER.year
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -411,7 +452,7 @@ with st.sidebar:
         st.rerun()
     
     if st.button("Return to Today", width='stretch'):
-        st.session_state.selected_date = datetime.now().date()
+        st.session_state.selected_date = USER_NOW.date()
         st.session_state.edit_mode_index = None
         st.rerun()
 
@@ -596,7 +637,7 @@ with tab3:
     avg_week, avg_month, avg_all, daily_totals = calculate_averages(df_log)
     
     if daily_totals is not None and not daily_totals.empty:
-        current_year = datetime.now().year
+        current_year = USER.year
         this_year_data = daily_totals[daily_totals['Date'].dt.year == current_year]
         if not this_year_data.empty:
             avg_curr_year = this_year_data[['Calories', 'Protein', 'Fiber']].mean()
