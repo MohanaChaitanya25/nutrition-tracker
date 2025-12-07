@@ -1040,8 +1040,10 @@ def load_log():
             df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
     return df
 
+food_entry_expander = False
 def save_entry(date_obj, meal, item, cals, pro, fib):
     append_to_worksheet(WORKSHEET_LOGS, [CURRENT_USER, date_obj.strftime("%Y-%m-%d"), meal, item, int(cals), float(pro), float(fib)])
+    food_entry_expander = False
 
 def update_entry(real_idx, meal, item, cals, pro, fib):
     sheet = get_google_sheet()
@@ -1167,24 +1169,26 @@ with c3:
 st.divider()
 
 # --- INPUT FORM ---
-st.caption("➕ Add Food Entry")
-with st.form("add_food", clear_on_submit=True, border=False):
-    c_m, c_n = st.columns([1,3])
-    meal_in = c_m.selectbox("Meal", ["Breakfast", "Lunch", "Snacks", "Dinner"], label_visibility="collapsed")
-    name_in = c_n.text_input("Item Name", placeholder="e.g. 2 Eggs", label_visibility="collapsed")
-    c1, c2, c3 = st.columns(3)
-    cal_in = c1.number_input("Calories", step=10, help="Calories")
-    pro_in = c2.number_input("Protein (g)", step=1.0, help="Protein")
-    fib_in = c3.number_input("Fiber (g)", step=1.0, help="Fiber")
-    
-    if st.form_submit_button("Add Entry", type="primary"):
-        if not name_in.strip():
-            st.error("⚠️ Please enter a food name!")
-        elif cal_in <= 0:
-            st.error("⚠️ Calories must be greater than 0!")
-        else:
-            save_entry(st.session_state.selected_date, meal_in, name_in, cal_in, pro_in, fib_in)
-            st.rerun()
+with st.expander("➕ Add Food Entry", expanded=food_entry_expander):
+    with st.form("add_food", clear_on_submit=True, border=False):
+        c_m, c_n = st.columns([1,3])
+        meal_in = c_m.selectbox("Meal", ["Breakfast", "Lunch", "Snacks", "Dinner"], label_visibility="collapsed")
+        name_in = c_n.text_input("Item Name", placeholder="e.g. 2 Eggs", label_visibility="collapsed")
+        c1, c2, c3 = st.columns(3)
+        cal_in = c1.number_input("Calories", step=10, help="Calories")
+        pro_in = c2.number_input("Protein (g)", step=1.0, help="Protein")
+        fib_in = c3.number_input("Fiber (g)", step=1.0, help="Fiber")
+        
+        if st.form_submit_button("Add Entry", type="primary"):
+            if not name_in.strip():
+                st.error("⚠️ Please enter a food name!")
+            elif cal_in <= 0:
+                st.error("⚠️ Calories must be greater than 0!")
+            else:
+                save_entry(st.session_state.selected_date, meal_in, name_in, cal_in, pro_in, fib_in)
+                st.rerun()
+                food_entry_expander = False
+
 
 tab1, tab2, tab3 = st.tabs(["📊 Visuals", "📝 Detailed Log", "📅 History"])
 
