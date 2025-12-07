@@ -1,5 +1,8 @@
-streamlit>=1.39.0
+streamlit
 pandas
 plotly
 gspread
 oauth2client
+geocoder
+timezonefinder
+pytz
