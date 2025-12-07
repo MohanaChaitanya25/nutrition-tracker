@@ -29,8 +29,6 @@ st.markdown("""
     
     /* Hides the "Manage App" / "Deploy" button */
     .stAppDeployButton, .stDeployButton {display: none !important;}
-
-    [data-testid="stToolbarActionButtonIcon"] {visibility: hidden !important;}
     
     /* Hides the "Three Dots" Menu in the top right */
     #MainMenu {visibility: hidden !important;}
