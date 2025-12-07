@@ -72,6 +72,24 @@ st.markdown("""
     .food-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 4px; display: block; }
     .food-macros { font-size: 0.85rem; color: #7f8c8d; font-weight: 500; }
     .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+
+    /* --- PROGRESS BARS --- */
+    .progress-container {
+        width: 100%;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        height: 8px;
+        margin-top: 4px;
+        margin-bottom: 8px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 10px;
+        background-color: rgba(255, 255, 255, 0.95);
+        transition: width 0.6s ease-in-out;
+    }
     
     /* MOBILE RESPONSIVE */
     @media (max-width: 768px) {
@@ -79,7 +97,7 @@ st.markdown("""
         .metric-card { min-width: 100%; padding: 18px 14px; border-radius: 14px; }
         .metric-emoji { font-size: 1.6rem; margin-bottom: 6px; }
         .metric-value { font-size: 1.6rem; }
-        .metric-label { font-size: 1.5rem; }
+        .metric-label { font-size: 1.6rem; }
         .metric-delta { font-size: 1rem; }
         .food-name { font-size: 0.95rem; }
         .food-macros { font-size: 0.75rem; }
@@ -88,7 +106,7 @@ st.markdown("""
         div[data-testid="stMetricValue"] div { font-size: 1.5rem !important; }
     }
     @media (max-width: 600px) { h1 { margin-top: 12px; font-size: 1.6rem !important; } .app-header { font-size: 1.8rem; } }
-    @media (max-width: 480px) { .metric-card { min-width: 100%; padding: 16px 12px; } .metric-emoji { font-size: 2rem; } .metric-value { font-size: 1.6rem; } .metric-label { font-size: 1.3rem; } }
+    @media (max-width: 480px) { .metric-card { min-width: 100%; padding: 16px 12px; } .metric-value { font-size: 1.5rem; } .metric-label { font-size: 1.5rem; } }
     </style>
 """, unsafe_allow_html=True)
 
@@ -484,14 +502,149 @@ af = df_today['Fiber'].sum()
 
 st.subheader(f"📅 {st.session_state.selected_date.strftime('%b %d')}")
 c1, c2, c3 = st.columns(3)
-with c1: 
-    st.markdown(f"""<div class="metrics-container"><div class="metric-card cal"><div class="metric-emoji">🔥</div><div class="metric-label">Calories</div><div class="metric-value">{int(ac)}</div><div class="metric-delta">{int(goal_cals - ac)} left</div></div></div>""", unsafe_allow_html=True)
-with c2: 
-    st.markdown(f"""<div class="metrics-container"><div class="metric-card pro"><div class="metric-emoji">💪</div><div class="metric-label">Protein</div><div class="metric-value">{round(ap,1)}g</div><div class="metric-delta">{round(ap - goal_pro,1)}g / {int(goal_pro)}g</div></div></div>""", unsafe_allow_html=True)
-with c3: 
-    st.markdown(f"""<div class="metrics-container"><div class="metric-card fib"><div class="metric-emoji">🌾</div><div class="metric-label">Fiber</div><div class="metric-value">{round(af,1)}g</div><div class="metric-delta">{round(af - goal_fib,1)}g / {int(goal_fib)}g</div></div></div>""", unsafe_allow_html=True)
 
-st.divider()
+# --- CALORIES CARD (With Sliding Bar) ---
+with c1:
+    consumed_cals = int(goal_cals - ac)
+    
+    # 1. Calculate Percentage
+    if goal_cals > 0:
+        cal_pct = min(100, max(0, (ac / goal_cals * 100)))
+    else:
+        cal_pct = 0
+
+    # 2. Check if over or under target
+    if ac <= goal_cals:
+        # UNDER TARGET STATE
+        st.markdown(f"""
+        <div class="metrics-container">
+            <div class="metric-card cal">
+                <div class="metric-label">🔥 Calories</div>
+                <div class="metric-value">
+                    {int(ac)} Kcal
+                    <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">
+                        (Target: {int(goal_cals)})
+                    </span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: {cal_pct}%;"></div>
+                </div>
+                <div class="metric-delta">{consumed_cals}Kcal left</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # OVER TARGET STATE
+        st.markdown(f"""
+        <div class="metrics-container">
+            <div class="metric-card cal"> 
+                <div class="metric-label">🔥 Calories</div>
+                <div class="metric-value">
+                    {int(ac)} Kcal
+                    <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">
+                        (Target: {int(goal_cals)})
+                    </span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: 100%; background-color: rgba(255, 255, 255, 0.8);"></div>
+                </div>
+                <div class="metric-delta">{int(ac - goal_cals)}Kcal over limit</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# -------------------------------------------------------
+# COLUMN 2: PROTEIN
+# -------------------------------------------------------
+with c2:
+    if goal_pro > 0:
+        pro_pct = min(100, max(0, (ap / goal_pro * 100)))
+    else:
+        pro_pct = 0
+        
+    if ap <= goal_pro:
+        # UNDER TARGET
+        left_pro = round(goal_pro - ap, 1)
+        st.markdown(f"""
+        <div class="metrics-container">
+            <div class="metric-card pro">
+                <div class="metric-label">💪 Protein</div>
+                <div class="metric-value">
+                    {round(ap,1)}g
+                    <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">(Target: {int(goal_pro)}g)</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: {pro_pct}%;"></div>
+                </div>
+                <div class="metric-delta">{left_pro}g left</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # OVER TARGET
+        over_pro = round(ap - goal_pro, 1)
+        st.markdown(f"""
+        <div class="metrics-container">
+            <div class="metric-card pro">
+                <div class="metric-label">💪 Protein</div>
+                <div class="metric-value">
+                    {round(ap,1)}g
+                    <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">(Target: {int(goal_pro)}g)</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: 100%; background-color: rgba(255,255,255,0.8);"></div>
+                </div>
+                <div class="metric-delta">{over_pro}g over limit</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# -------------------------------------------------------
+# COLUMN 3: FIBER
+# -------------------------------------------------------
+with c3:
+    if goal_fib > 0:
+        fib_pct = min(100, max(0, (af / goal_fib * 100)))
+    else:
+        fib_pct = 0
+
+    if af <= goal_fib:
+        # UNDER TARGET
+        left_fib = round(goal_fib - af, 1)
+        st.markdown(f"""
+        <div class="metrics-container">
+            <div class="metric-card fib">
+                <div class="metric-label">🌾 Fiber</div>
+                <div class="metric-value">
+                    {round(af,1)}g
+                    <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">(Target: {int(goal_fib)}g)</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: {fib_pct}%;"></div>
+                </div>
+                <div class="metric-delta">{left_fib}g left</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # OVER TARGET
+        over_fib = round(af - goal_fib, 1)
+        st.markdown(f"""
+        <div class="metrics-container">
+            <div class="metric-card fib">
+                <div class="metric-label">🌾 Fiber</div>
+                <div class="metric-value">
+                    {round(af,1)}g
+                    <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">(Target: {int(goal_fib)}g)</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: 100%; background-color: rgba(255,255,255,0.8);"></div>
+                </div>
+                <div class="metric-delta" style="color: #E1F5FE; font-weight: bold;">{over_fib}g over limit</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # --- INPUT FORM ---
 with st.expander("➕ Add Food Entry", expanded=food_entry_expander):
