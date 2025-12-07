@@ -646,7 +646,7 @@ with tab3:
     avg_week, avg_month, avg_all, daily_totals = calculate_averages(df_log)
     
     if daily_totals is not None and not daily_totals.empty:
-        current_year = USER.year
+        current_year = USER_NOW.year
         this_year_data = daily_totals[daily_totals['Date'].dt.year == current_year]
         if not this_year_data.empty:
             avg_curr_year = this_year_data[['Calories', 'Protein', 'Fiber']].mean()
