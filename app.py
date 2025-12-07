@@ -1263,16 +1263,17 @@ with tab2:
                 if st.session_state.edit_mode_index == unique_key:
                     with st.container():
                         st.markdown(f"**Editing: {row['Item']}**")
-                        ec1, ec2, ec3, ec4 = st.columns([3, 1, 1, 1])
+                        ec1, ec2, ec3, ec4, ec5 = st.columns([3, 1, 1, 1, 1])
                         e_item = ec1.text_input("Name", row['Item'], key=f"e_name_{unique_key}")
-                        e_cal = ec2.number_input("Calories", value=int(row['Calories']), key=f"e_cal_{unique_key}")
-                        e_pro = ec3.number_input("Protein", value=float(row['Protein']), key=f"e_pro_{unique_key}")
-                        e_fib = ec4.number_input("Fiber", value=float(row['Fiber']), key=f"e_fib_{unique_key}")
+                        e_meal = ec2.selectbox("Meal", ["Breakfast", "Lunch", "Snacks", "Dinner"], index=["Breakfast", "Lunch", "Snacks", "Dinner"].index(meal), key=f"e_meal_{unique_key}")
+                        e_cal = ec3.number_input("Calories", value=int(row['Calories']), key=f"e_cal_{unique_key}")
+                        e_pro = ec4.number_input("Protein", value=float(row['Protein']), key=f"e_pro_{unique_key}")
+                        e_fib = ec5.number_input("Fiber", value=float(row['Fiber']), key=f"e_fib_{unique_key}")
                         
-                        btn1, btn2 = st.columns([1, 4])
+                        btn1, btn2 = st.columns([1, 1])
                         if btn1.button("Save", key=f"save_{unique_key}", icon=":material/save:", width='stretch'):
                             if real_idx != -1:
-                                update_entry(real_idx, meal, e_item, e_cal, e_pro, e_fib)
+                                update_entry(real_idx, e_meal, e_item, e_cal, e_pro, e_fib)
                                 st.session_state.edit_mode_index = None
                                 st.rerun()
                         if btn2.button("Cancel", key=f"cancel_{unique_key}", icon=":material/close:", width='stretch'):
