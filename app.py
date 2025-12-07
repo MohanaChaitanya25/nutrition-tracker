@@ -27,11 +27,6 @@ st.markdown("""
     <style>
     .block-container { padding-top: 1rem; padding-bottom: 5rem; }
     .app-header { text-align: center; font-size: 2.5rem; font-weight: 800; color: #667eea; margin-bottom: 20px; padding-top: 20px; }
-
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stAppDeployButton {display:none;}
     
     /* METRICS & CARDS */
     .metrics-container { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
