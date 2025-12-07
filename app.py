@@ -827,7 +827,7 @@ def get_google_sheet():
         st.error(f"Connection Error: {e}")
         return None
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=120)
 def get_worksheet_df(worksheet_name, headers):
     sheet = get_google_sheet()
     if not sheet: return pd.DataFrame(columns=headers)
