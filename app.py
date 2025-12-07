@@ -412,13 +412,13 @@ def calculate_averages(df):
 
 # --- STATE ---
 if 'selected_date' not in st.session_state: 
-    st.session_state.selected_date = USER.date()
+    st.session_state.selected_date = USER_NOW.date()
 if 'edit_mode_index' not in st.session_state: 
     st.session_state.edit_mode_index = None
 if 'cal_month' not in st.session_state: 
-    st.session_state.cal_month = USER.month
+    st.session_state.cal_month = USER_NOW.month
 if 'cal_year' not in st.session_state: 
-    st.session_state.cal_year = USER.year
+    st.session_state.cal_year = USER_NOW.year
 
 # --- SIDEBAR ---
 with st.sidebar:
