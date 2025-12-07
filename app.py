@@ -7,10 +7,6 @@ import plotly.graph_objects as go
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import hashlib
-
-# --- NEW IMPORTS FOR LOCATION ---
-import geocoder
-from timezonefinder import TimezoneFinder
 import pytz
 
 
