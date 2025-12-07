@@ -32,9 +32,6 @@ st.markdown("""
     
     /* Hides the "Three Dots" Menu in the top right */
     #MainMenu {visibility: hidden !important;}
-
-    /* Hides the GitHub Icon & other toolbar actions in the top right */
-    [data-testid="stToolbar"] {visibility: hidden !important;}
     
     /* Hides the "Made with Streamlit" Footer */
     footer {visibility: hidden !important;}
