@@ -100,38 +100,26 @@ st.markdown("""
 st.markdown(f"<div class='app-header'>{APP_NAME}</div>", unsafe_allow_html=True)
 
 # --- TIMEZONE DETECTION HELPER ---
+# --- TIMEZONE HELPER ---
 def get_user_local_now():
-    """Detects user location via IP and returns their local datetime object."""
+    """Returns the user's local time based on Session State or defaults to IST."""
     try:
-        # Only check once per session to speed up app
-        if 'user_local_now_offset' not in st.session_state:
-            g = geocoder.ip('me') # Get location based on IP
-            if g.latlng:
-                latitude, longitude = g.latlng
-                tf = TimezoneFinder()
-                user_timezone_str = tf.timezone_at(lng=longitude, lat=latitude)
-                if user_timezone_str:
-                    target_tz = pytz.timezone(user_timezone_str)
-                    st.session_state.user_timezone_name = user_timezone_str
-                    # Calculate offset from server time
-                    utc_now = datetime.now(pytz.utc)
-                    local_now = utc_now.astimezone(target_tz)
-                    # We return the direct time object
-                    return local_now
-        
-        # If we already found it, or if detection failed, return calculated time or server time
-        if 'user_timezone_name' in st.session_state:
-             target_tz = pytz.timezone(st.session_state.user_timezone_name)
-             return datetime.now(pytz.utc).astimezone(target_tz)
+        # 1. Check if user selected a specific timezone in the sidebar
+        if 'user_tz' in st.session_state:
+            target_tz = pytz.timezone(st.session_state.user_tz)
+        else:
+            # 2. DEFAULT TO INDIA (IST) if no selection made
+            target_tz = pytz.timezone('Asia/Kolkata') 
+            
+        return datetime.now(target_tz)
 
     except Exception as e:
-        print(f"Timezone detection error: {e}")
-    
-    # Fallback to server time if detection fails
-    return datetime.now()
+        print(f"Timezone error: {e}")
+        return datetime.now()
 
-# Define a global variable for "Now" to be used throughout the script
+# Define Global "Now"
 USER_NOW = get_user_local_now()
+
 
 # --- GOOGLE SHEETS CONNECTION ---
 @st.cache_resource
@@ -455,6 +443,27 @@ with st.sidebar:
         st.session_state.selected_date = USER_NOW.date()
         st.session_state.edit_mode_index = None
         st.rerun()
+
+    with st.expander("⚙️ Timezone Settings"):
+        # Get list of all timezones
+        all_timezones = pytz.all_timezones
+        
+        # Determine current selection (Default to Asia/Kolkata)
+        current_tz = st.session_state.get('user_tz', 'Asia/Kolkata')
+        
+        # Find index for the selectbox
+        try:
+            tz_index = all_timezones.index(current_tz)
+        except ValueError:
+            tz_index = all_timezones.index('Asia/Kolkata')
+
+        # Show Selector
+        selected_tz = st.selectbox("Select Timezone", all_timezones, index=tz_index)
+
+        # If changed, update state and rerun
+        if selected_tz != current_tz:
+            st.session_state.user_tz = selected_tz
+            st.rerun()
 
     st.divider()
     with st.expander("🎯 Update Targets"):
