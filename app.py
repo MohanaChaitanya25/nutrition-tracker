@@ -811,11 +811,11 @@ with tab2:
                     with col_btns:
                         btn_col1, btn_col2 = st.columns(2)
                         with btn_col1:
-                            if st.button(key=f"edt_{unique_key}", icon=":material/edit:", help="Edit", use_container_width=True):
+                            if st.button("", key=f"edt_{unique_key}", icon=":material/edit:", help="Edit"):
                                 st.session_state.edit_mode_index = unique_key
                                 st.rerun()
                         with btn_col2:
-                            if st.button(key=f"del_{unique_key}", icon=":material/delete:", help="Delete", use_container_width=True):
+                            if st.button("", key=f"del_{unique_key}", icon=":material/delete:", help="Edit"):
                                 if real_idx != -1:
                                     delete_entry(real_idx)
                                     st.rerun()
