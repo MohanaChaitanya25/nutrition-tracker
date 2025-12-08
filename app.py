@@ -77,7 +77,7 @@ st.markdown("""
     
     /* FOOD CARDS & BUTTONS */
     .food-card { background-color: white; border: 1px solid #eee; border-left: 5px solid #ddd; padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; }
-    .food-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 4px; display: block; }
+    .food-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; display: block; }
     .food-macros { font-size: 0.85rem; color: #7f8c8d; font-weight: 500; }
     .stButton button { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
 
