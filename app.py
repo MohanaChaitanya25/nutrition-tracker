@@ -769,7 +769,7 @@ with tab2:
                 
                 # --- DISPLAY MODE (MOBILE-FRIENDLY) ---
                 else:
-                    col_text, col_edit, col_delete = st.columns([8, 1, 1])
+                    col_text, col_edit_delete = st.columns([9, 1])
                     
                     with col_text:
                         st.markdown(f"""
@@ -781,13 +781,12 @@ with tab2:
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    with col_edit:
-                        if st.button("", key=f"edt_{unique_key}", icon=":material/edit:", help="Edit"):
+                    with col_edit_delete:
+                        if st.button("Edit", key=f"edt_{unique_key}", help="Edit"):
                             st.session_state.edit_mode_index = unique_key
                             st.rerun()
-                    
-                    with col_delete:
-                        if st.button("", key=f"del_{unique_key}", icon=":material/delete:", help="Delete"):
+
+                        if st.button("Delete", key=f"del_{unique_key}", help="Delete"):
                             if real_idx != -1:
                                 delete_entry(real_idx)
                                 st.rerun()
