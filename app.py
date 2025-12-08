@@ -42,7 +42,7 @@ st.markdown("""
     /* Hides the colored rainbow line at the top */
     [data-testid="stDecoration"] {display: none !important;}
 
-    [data-testid="stToolbarActionButton"] button[data-testid="stBaseButton-header"] .st-emotion-cache-q16mip.ekuhni81 {
+    [data-testid="stToolbarActionButton"]:has(.st-emotion-cache-q16mip.ekuhni81) {
         display: none !important;
     }
     
