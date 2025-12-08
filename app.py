@@ -767,9 +767,36 @@ with tab2:
                             st.rerun()
                     st.divider()
                 
+                # # --- DISPLAY MODE (MOBILE-FRIENDLY) ---
+                # else:
+                #     col_text, col_edit_delete = st.columns([9, 1])
+                    
+                #     with col_text:
+                #         st.markdown(f"""
+                #         <div style="margin-bottom: 2px;">
+                #             <span class="food-name">{row['Item']}</span>
+                #             <div class="food-macros">
+                #                 {int(row['Calories'])} Kcal &nbsp;•&nbsp; {float(row['Protein'])}g Protein &nbsp;•&nbsp; {float(row['Fiber'])}g Fibers
+                #             </div>
+                #         </div>
+                #         """, unsafe_allow_html=True)
+                    
+                #     with col_edit_delete:
+                #         edit_btn, delete_btn = st.columns([1, 1])
+                #         if edit_btn.button("Edit", key=f"edt_{unique_key}", help="Edit"):
+                #             st.session_state.edit_mode_index = unique_key
+                #             st.rerun()
+
+                #         if delete_btn.button("Delete", key=f"del_{unique_key}", help="Delete"):
+                #             if real_idx != -1:
+                #                 delete_entry(real_idx)
+                #                 st.rerun()
+                    
+                #     st.markdown("<hr style='margin: 5px 0px 10px 0px; opacity: 0.3;'>", unsafe_allow_html=True)
+
                 # --- DISPLAY MODE (MOBILE-FRIENDLY) ---
                 else:
-                    col_text, col_edit_delete = st.columns([9, 1])
+                    col_text, col_btns = st.columns([7, 2])
                     
                     with col_text:
                         st.markdown(f"""
@@ -781,16 +808,17 @@ with tab2:
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    with col_edit_delete:
-                        edit_btn, delete_btn = st.columns([1, 1])
-                        if edit_btn.button("Edit", key=f"edt_{unique_key}", help="Edit"):
-                            st.session_state.edit_mode_index = unique_key
-                            st.rerun()
-
-                        if delete_btn.button("Delete", key=f"del_{unique_key}", help="Delete"):
-                            if real_idx != -1:
-                                delete_entry(real_idx)
+                    with col_btns:
+                        btn_col1, btn_col2 = st.columns(2)
+                        with btn_col1:
+                            if st.button(key=f"edt_{unique_key}", icon=":material/edit:", help="Edit", use_container_width=True):
+                                st.session_state.edit_mode_index = unique_key
                                 st.rerun()
+                        with btn_col2:
+                            if st.button(key=f"del_{unique_key}", icon=":material/delete:", help="Delete", use_container_width=True):
+                                if real_idx != -1:
+                                    delete_entry(real_idx)
+                                    st.rerun()
                     
                     st.markdown("<hr style='margin: 5px 0px 10px 0px; opacity: 0.3;'>", unsafe_allow_html=True)
     else:
