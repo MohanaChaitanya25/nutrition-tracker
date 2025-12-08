@@ -531,7 +531,7 @@ with c1:
                 <div class="metric-value">
                     {int(ac)} Kcal
                     <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">
-                        (Target: {int(goal_cals)})
+                        (Target: {int(goal_cals)}Kcal)
                     </span>
                 </div>
                 <div class="progress-container">
@@ -550,7 +550,7 @@ with c1:
                 <div class="metric-value">
                     {int(ac)} Kcal
                     <span style="font-size: 0.4em; opacity: 0.8; font-weight: normal;">
-                        (Target: {int(goal_cals)})
+                        (Target: {int(goal_cals)}Kcal)
                     </span>
                 </div>
                 <div class="progress-container">
