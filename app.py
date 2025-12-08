@@ -924,7 +924,7 @@ with tab3:
         fig_cal = go.Figure(data=go.Heatmap(
             x=x_vals, y=y_vals, z=z_vals,
             text=text_vals, texttemplate="%{text}", 
-            textfont={"size": 14, "color": "gray"},
+            textfont={"size": 14, "color": "black"},
             xgap=3, ygap=3,
             colorscale=[[0, '#f8f9fa'], [0.01, '#e6fffa'], [1, '#319795']], 
             showscale=False,
