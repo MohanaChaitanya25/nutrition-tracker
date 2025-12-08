@@ -28,7 +28,7 @@ st.set_page_config(page_title=APP_NAME, page_icon="🥗", layout="wide")
 # --- CSS STYLING ---
 st.markdown("""
     <style>
-        /* 1. HIDE ADMIN ELEMENTS (But keep Sidebar Toggle!) */
+    /* 1. HIDE ADMIN ELEMENTS (But keep Sidebar Toggle!) */
     
     /* Hides the "Manage App" / "Deploy" button */
     .stAppDeployButton, .stDeployButton {display: none !important;}
@@ -41,6 +41,8 @@ st.markdown("""
     
     /* Hides the colored rainbow line at the top */
     [data-testid="stDecoration"] {display: none !important;}
+
+    [data-testid="stBaseButton-header"] {display: none !important;}
     
     /* NOTE: We removed the rule hiding 'stHeader' so the sidebar toggle remains visible */
     
