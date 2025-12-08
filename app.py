@@ -42,7 +42,7 @@ st.markdown("""
     /* Hides the colored rainbow line at the top */
     [data-testid="stDecoration"] {display: none !important;}
 
-    [data-testid="stBaseButton-header"] {display: none !important;}
+    
     
     /* NOTE: We removed the rule hiding 'stHeader' so the sidebar toggle remains visible */
     
