@@ -45,6 +45,10 @@ st.markdown("""
     [data-testid="stToolbarActionButton"]:has(.st-emotion-cache-q16mip.ekuhni81) {
         display: none !important;
     }
+
+    button[data-testid="stBaseButton-header"]:has(span[data-testid="stToolbarActionButtonLabel"]:contains("Fork")) {
+        display: none !important;
+    }
     
     /* NOTE: We removed the rule hiding 'stHeader' so the sidebar toggle remains visible */
     
